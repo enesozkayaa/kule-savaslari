@@ -79,18 +79,22 @@ label { font-size: 13px; color: var(--soluk); }
 /* Oyun */
 #etiketler { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
 .etiketKutu { position: absolute; border: 2px solid rgba(255, 255, 255, 0.18); }
-.etiketKutu.ana { border: none; }
+.etiketKutu.ana { border: 3px solid var(--sari); box-shadow: inset 0 0 18px rgba(255, 194, 26, 0.35); }
 .etiketKutu .ust { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 7px; font-size: 12px; font-weight: 900; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
 .etiketKutu .ust .ad { background: rgba(10, 18, 34, 0.6); padding: 2px 7px; border-radius: 7px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .etiketKutu .ust .deger { background: rgba(10, 18, 34, 0.6); padding: 2px 7px; border-radius: 7px; }
-.etiketKutu.ana .ust { font-size: 16px; padding: 10px 12px; }
-.etiketKutu.ana .ust .deger { font-size: 20px; color: var(--sari); }
+.etiketKutu .ust { font-size: 14px; }
+.etiketKutu .ust .deger { font-size: 15px; }
+.etiketKutu.ana .ust .deger { color: var(--sari); }
+.etiketKutu.dar .ust { font-size: 11px; padding: 4px; }
+.etiketKutu.dar .ust .deger { font-size: 11px; }
+.etiketKutu.dar .durumYazi { font-size: 14px; padding: 3px 7px; }
 .durumYazi { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: 'Lilita One', sans-serif; font-size: 18px; color: #fff;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9); white-space: nowrap; display: none; background: rgba(10, 18, 34, 0.55); padding: 4px 12px; border-radius: 12px; }
 .durumYazi.var { display: block; }
 .durumYazi.kirmizi { color: #ffb0a8; }
-.etiketKutu.ana .durumYazi { font-size: 34px; top: 38%; }
-#ustCubuk { position: fixed; z-index: 4; display: flex; justify-content: flex-end; gap: 6px; padding: 8px; pointer-events: none; }
+.etiketKutu.ana .durumYazi { font-size: 26px; top: 38%; }
+#ustCubuk { position: fixed; z-index: 4; right: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; padding: 6px; pointer-events: none; }
 #ustCubuk button { pointer-events: auto; background: rgba(20, 30, 52, 0.75); }
 .duyuru { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 6; background: rgba(20, 30, 52, 0.92); border: 1px solid var(--kenar);
   border-radius: 14px; padding: 9px 16px; font-weight: 800; font-size: 15px; text-align: center; max-width: 92vw; pointer-events: none; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
@@ -108,16 +112,18 @@ label { font-size: 13px; color: var(--soluk); }
 .kontrol { width: 66px; height: 66px; border-radius: 50%; font-size: 28px; padding: 0; background: rgba(20, 30, 52, 0.72); border: 2px solid rgba(255, 210, 90, 0.45);
   touch-action: none; -webkit-user-select: none; user-select: none; }
 .kontrol.basili { background: rgba(255, 194, 26, 0.55); transform: scale(0.94); }
-.alet { pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 14px; border-radius: 16px; margin-bottom: 4px;
+.alet { position: fixed; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5; pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 14px; border-radius: 16px; margin-bottom: 4px;
   background: linear-gradient(180deg, #3ddc6a, #1f9c45); border: 2px solid #9dffb8; color: #062a12; animation: nabiz 1s infinite; }
 .alet.kotu { background: linear-gradient(180deg, #b45cff, #7a22d4); border-color: #dcb0ff; color: #fff; }
 .alet .i { font-size: 30px; line-height: 1.1; }
+.alet * { pointer-events: none; }
+.alet { touch-action: none; }
 .alet .y { font-size: 13px; font-weight: 900; }
 .alet .h { font-size: 11px; opacity: 0.85; }
-@keyframes nabiz { 50% { transform: scale(1.06); } }
+@keyframes nabiz { 50% { transform: translateX(-50%) scale(1.06); } }
 .ipucu { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 3; font-size: 13px; color: rgba(255, 255, 255, 0.7); background: rgba(10, 18, 34, 0.5);
   padding: 4px 10px; border-radius: 8px; pointer-events: none; white-space: nowrap; }
-@media (pointer: fine) { #kontroller .grup { display: none; } #kontroller { justify-content: center; padding-bottom: 44px; } }
+@media (pointer: fine) { #kontroller .grup { display: none; } #kontroller { justify-content: center; } .alet { bottom: 44px; } }
 
 /* Sonuç */
 .sonucListe { display: flex; flex-direction: column; gap: 6px; }

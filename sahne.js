@@ -307,7 +307,7 @@ const Sahne = (() => {
         if (Math.abs(r.position.x) > 10 || r.position.y === 0) { r.position.x = -k.rz * (8 + Math.random() * 2); r.position.y = Math.max(k.ust, 0) - 2 + Math.random() * 12; r.position.z = 1.5; }
       });
       // kamera yüksekliği
-      const kHedef = Math.max(5, k.ust + 3.5);
+      const kHedef = Math.max(0, k.ust + 2.5);
       k.kamY += (kHedef - k.kamY) * Math.min(1, dt * 1.8);
     });
   }
@@ -323,13 +323,15 @@ const Sahne = (() => {
       const k = kulvarlar[a.i]; if (!k || a.w < 2 || a.h < 2) return;
       const cam = k.kamera, asp = a.w / a.h;
       cam.aspect = asp;
-      const yariH = (a.ana ? 10 : 11) , yariW = 7.2;
+      // Görünen alan: en az 9 birim yükseklik, 9.4 birim genişlik (platform 6 + taşma payı)
+      const yariH = 9, yariW = asp < 0.45 ? 3.6 : 4.7;   // çok dar sütunda (telefon, dikey) biraz daha yakın
       const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
       const d = Math.max(yariH / t, yariW / (t * asp));
-      // ana görünümde alttaki düğmeler için biraz pay bırak (kule biraz yukarıda görünsün)
-      const kay = a.ana ? d * t * 0.12 : 0;
-      cam.position.set(k.x0, k.kamY + 1 - kay, d);
-      cam.lookAt(k.x0, k.kamY - kay, 0);
+      const vh = d * t;   // görünen yarı yükseklik
+      // platform ekranın altına yakın kalsın (alttaki düğmeler için ~%12 pay), kule büyüdükçe kamera yükselir
+      const merkez = Math.max(k.kamY, vh * 0.76 - 1.2);
+      cam.position.set(k.x0, merkez + 1, d);
+      cam.lookAt(k.x0, merkez, 0);
       cam.updateProjectionMatrix();
       const y = H - a.y - a.h;
       renderer.setViewport(a.x, y, a.w, a.h); renderer.setScissor(a.x, y, a.w, a.h);

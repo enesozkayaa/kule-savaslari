@@ -27,7 +27,10 @@ const Fizik = (() => {
   const NORMAL = ['I', 'O', 'T', 'L', 'J', 'S', 'Z'];
   const SEKIL = {};
   Object.entries(HUCRE).forEach(([ad, h]) => {
-    const mx = h.reduce((s, c) => s + c[0], 0) / h.length, my = h.reduce((s, c) => s + c[1], 0) / h.length;
+    // Dönme noktası: ağırlık merkezine en yakın yarım-birim nokta. Böylece her hücre yarım birimlik
+    // ızgaraya oturur ve parçalar (özellikle L/J) yan yana boşluksuz dizilir.
+    const yarim = v => Math.round(v * 2) / 2;
+    const mx = yarim(h.reduce((s, c) => s + c[0], 0) / h.length), my = yarim(h.reduce((s, c) => s + c[1], 0) / h.length);
     SEKIL[ad] = h.map(([x, y]) => ({ x: x - mx, y: y - my, w: 1, h: 1 }));
   });
   SEKIL.KALAS = [{ x: 0, y: 0, w: 5, h: 0.5 }];

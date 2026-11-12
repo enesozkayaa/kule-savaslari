@@ -275,7 +275,8 @@
     Ses.aletKullan();
     eveGonder({ tip: 'alet', ad });
   }
-  $('#aletBtn').onclick = benimAletim;
+  // dokunur dokunmaz çalışsın (parmağı kaldırmayı beklemeden)
+  $('#aletBtn').addEventListener('pointerdown', e => { e.preventDefault(); Ses.ac(); benimAletim(); });
 
   // Ev: oyun bitti mi?
   function bitisKontrol() {
@@ -366,21 +367,12 @@
   // ---------- Ekran düzeni ----------
   function yerlesim() {
     const O = D.oyun, W = window.innerWidth, H = window.innerHeight;
-    const ben = O.benIdx >= 0 ? O.benIdx : 0;
-    const diger = O.oyuncular.map((o, i) => i).filter(i => i !== ben);
-    if (!diger.length) return [{ i: ben, x: 0, y: 0, w: W, h: H, ana: true }];
-    const alan = [];
-    if (W > H * 1.05) {
-      const sw = Math.round(Math.min(W * 0.3, (H / diger.length) * 0.95 + 40));
-      const sh = Math.floor(H / diger.length);
-      alan.push({ i: ben, x: 0, y: 0, w: W - sw, h: H, ana: true });
-      diger.forEach((i, k) => alan.push({ i, x: W - sw, y: k * sh, w: sw, h: sh }));
-    } else {
-      const sh = Math.round(H * 0.25), sw = Math.floor(W / diger.length);
-      alan.push({ i: ben, x: 0, y: sh, w: W, h: H - sh, ana: true });
-      diger.forEach((i, k) => alan.push({ i, x: k * sw, y: 0, w: sw, h: sh }));
-    }
-    return alan;
+    // Ekran oyuncu sayısı kadar eşit parçaya bölünür, herkes yan yana (benimki çerçeveli)
+    const ben = O.benIdx >= 0 ? O.benIdx : 0, n = O.oyuncular.length;
+    return O.oyuncular.map((o, i) => {
+      const x = Math.round((i * W) / n), x2 = Math.round(((i + 1) * W) / n);
+      return { i, x, y: 0, w: x2 - x, h: H, ana: i === ben };
+    });
   }
   function etiketleriKur() {
     const kap = $('#etiketler'); kap.innerHTML = '';
@@ -396,6 +388,7 @@
       const el = $(`#etiketler .etiketKutu[data-i="${a.i}"]`); if (!el) return;
       Object.assign(el.style, { left: a.x + 'px', top: a.y + 'px', width: a.w + 'px', height: a.h + 'px' });
       el.classList.toggle('ana', !!a.ana);
+      el.classList.toggle('dar', a.w < 170);
       const o = O.oyuncular[a.i], d = durumAl(o.id) || {};
       const kalpler = O.mod === 'yaris' ? '' : ' ' + '❤️'.repeat(Math.max(0, d.can ?? 3)) + '🖤'.repeat(Math.max(0, 3 - (d.can ?? 3)));
       const deger = O.mod === 'yaris' ? `🏗️ ${(d.ust || 0).toFixed(1)} / ${O.hedef} m`
@@ -412,14 +405,16 @@
         const al = d.al ? Fizik.ALETLER[d.al] : null;
         const btn = $('#aletBtn');
         btn.hidden = !al || !!d.el || !O.basladi || O.bitti;
-        if (al) { btn.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="h">${al.iyi ? 'kendine' : 'rakibe'}</span>`; btn.classList.toggle('kotu', !al.iyi); }
+        btn.style.left = (a.x + a.w / 2) + 'px';   // benim kulvarımın ortasında
+        // içeriği SADECE alet değişince yaz (her karede yazınca dokunuşlar kayboluyordu)
+        if (al && btn.dataset.alet !== d.al) { btn.dataset.alet = d.al; btn.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="h">${al.iyi ? 'kendine' : 'rakibe'}</span>`; btn.classList.toggle('kotu', !al.iyi); }
+        if (!al) btn.dataset.alet = '';
       }
     });
     // ana alan: kontroller ve üst çubuk ana alanın içinde
     const ana = alanlar.find(a => a.ana);
     if (ana) {
-      const ust = $('#ustCubuk'); Object.assign(ust.style, { left: ana.x + 'px', top: ana.y + 'px', width: ana.w + 'px' });
-      const kont = $('#kontroller'); Object.assign(kont.style, { left: ana.x + 'px', width: ana.w + 'px' });
+      const kont = $('#kontroller'); Object.assign(kont.style, { left: '0px', width: '100%' });
     }
   }
 

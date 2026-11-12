@@ -84,9 +84,10 @@ const Bot = (() => {
           const havada = ornek.length - destek.length;
           // ağırlık merkezi destek noktalarının arasında mı?
           let devril = 0;
+          const alan = rect.reduce((t, q) => t + q.w * q.h, 0), kx = px + rect.reduce((t, q) => t + q.x * q.w * q.h, 0) / alan;   // ağırlık merkezi
           if (temas.length) {
             const mn = Math.min(...temas), mx = Math.max(...temas), pay = Math.min(0.3, (mx - mn) / 2);
-            if (px < mn + pay) devril = mn + pay - px; else if (px > mx - pay) devril = px - mx + pay;
+            if (kx < mn + pay) devril = mn + pay - kx; else if (kx > mx - pay) devril = kx - mx + pay;
             if (mx - mn < 0.6) devril += 0.5;   // tek noktaya oturmak tehlikeli
           } else devril = 3;
           const sinir = Fizik.PLATFORM / 2 - 0.05;
