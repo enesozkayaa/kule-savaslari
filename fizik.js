@@ -47,7 +47,7 @@ const Fizik = (() => {
   const ALETLER = {
     zimba: { ad: 'Zımba', ikon: '🔩', iyi: true, acik: 'Kulendeki parçalar yerine çakılır, artık devrilmez.' },
     kalas: { ad: 'Kalas', ikon: '🪵', iyi: true, acik: 'Sıradaki parça uzun, düz bir kalas.' },
-    kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki 3 parça küçük.' },
+    kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki 2 parça küçük.' },
     buz: { ad: 'Buz', ikon: '🧊', iyi: false, acik: 'Rakibin sıradaki 3 parçası buz gibi kaygan.' },
     ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 4 saniye sert rüzgâr eser.' },
     dev: { ad: 'Dev Kasa', ikon: '📦', iyi: false, acik: 'Rakibin sıradaki parçası kocaman.' },
@@ -282,7 +282,7 @@ const Fizik = (() => {
           if (p.durum === 'serbest' && p.b.getLinearVelocity().length() < 1 && Math.abs(p.b.getAngularVelocity()) < 1) { p.b.setStatic(); p.durum = 'sabit'; }
         });
       } else if (ad === 'kalas') e.kalas = 1;
-      else if (ad === 'kucuk') e.kucuk = 3;
+      else if (ad === 'kucuk') e.kucuk = 2;
       else if (ad === 'buz') e.buz = 3;
       else if (ad === 'dev') e.dev = 1;
       else if (ad === 'hiz') e.hiz = 3;
