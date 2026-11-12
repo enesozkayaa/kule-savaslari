@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Kule Savaşları</title>
+  <meta name="description" content="Fizikli kule dikme yarışı: tuğlaları vinçle indir, kuleni devirmeden yükselt, rakiplerine buz ve rüzgâr gönder!">
+  <meta name="theme-color" content="#1b2a44">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="ikonlar/ikon-192.png">
+  <link rel="apple-touch-icon" href="ikonlar/ikon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="sahne"></canvas>
+
+  <!-- Giriş -->
+  <section id="giris" class="ekran">
+    <div class="kart">
+      <h1>🏗️ Kule<br><span>Savaşları</span></h1>
+      <p class="alt">Vinçten inen tuğlaları üst üste diz, kuleni devirmeden yükselt. Rakiplerine buz, rüzgâr ve dev kasa gönder!</p>
+      <label for="adim">Adın</label>
+      <input id="adim" maxlength="14" placeholder="Adın" autocomplete="off">
+      <button id="odaKurBtn" class="ana">🏠 Online oda aç</button>
+      <div class="satir">
+        <input id="odaKoduGir" maxlength="5" placeholder="ODA KODU" autocomplete="off">
+        <button id="katilBtn">Katıl</button>
+      </div>
+      <button id="botlaBtn">🤖 Botlarla oyna (internetsiz)</button>
+      <p id="girisDurum" class="durum"></p>
+      <details class="nasil">
+        <summary>❓ Nasıl oynanır?</summary>
+        <ul>
+          <li>Parçalar vinçten yavaşça iner. <b>Sağa-sola kaydır</b>, <b>döndür</b>, istersen <b>hızlı indir</b>. Bir yere değdiği an bırakılır ve gerçek fizikle davranır: kayar, sallanır, devrilebilir!</li>
+          <li>🏁 <b>Yarış:</b> kuleni bitiş çizgisine ilk ulaştıran ve 3 saniye tutan kazanır.</li>
+          <li>❤️ <b>Hayatta Kalma:</b> hedef sayıda parçayı yerleştir. Düşen her parça 1 can götürür, 3 canın var.</li>
+          <li>🔴 <b>Lazer Bulmaca:</b> lazerin altında kalarak en çok parçayı yerleştir. Lazere değen ya da canı biten çıkar.</li>
+          <li>Her 4 parçada bir <b>alet</b> kazanırsın: 🔩 Zımba, 🪵 Kalas, 🧱 Küçük tuğla kendine; 🧊 Buz, 🌬️ Rüzgâr, 📦 Dev kasa, ⚡ Hızlı vinç öndeki rakibe!</li>
+          <li>Bilgisayarda: ← → kaydır, ↑ ya da boşluk döndür, ↓ hızlı indir, Shift alet.</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <!-- Bekleme odası -->
+  <section id="lobi" class="ekran" hidden>
+    <div class="kart genis">
+      <div class="lobiUst">
+        <div id="odaBilgi">Oda kodu <b id="odaKodu" class="odaKodu">-----</b></div>
+        <button id="lobiSesBtn" class="ses">🎤 Mikrofonu aç</button>
+      </div>
+      <p id="lobiAciklama" class="alt"></p>
+      <ol id="oyuncuListe" class="oyuncuListe"></ol>
+      <button id="botEkleBtn">🤖 Bot ekle</button>
+      <div class="ayarlar">
+        <div class="ayar"><span>🎮 Mod</span><div class="secenek" id="modSec"></div></div>
+        <p id="modAciklama" class="modAciklama"></p>
+        <div class="ayar"><span>📏 Uzunluk</span><div class="secenek" id="uzunlukSec"></div></div>
+        <div class="ayar" id="zorlukSatir"><span>🤖 Bot zorluğu</span><div class="secenek" id="zorlukSec"></div></div>
+      </div>
+      <p id="lobiDurum" class="durum"></p>
+      <div class="satir">
+        <button id="cikBtn">🚪 Çık</button>
+        <button id="baslatBtn" class="ana">🏗️ Başlat</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Oyun -->
+  <section id="oyun" hidden>
+    <div id="etiketler"></div>
+    <div id="ustCubuk">
+      <button id="oyunSesBtn" class="ses kucuk">🎤</button>
+      <button id="efektBtn" class="kucuk" title="Oyun sesleri">🔊</button>
+      <button id="oyunCikBtn" class="kucuk" title="Çık">🚪</button>
+    </div>
+    <div id="duyuru" class="duyuru" hidden></div>
+    <div id="buyukYazi" class="buyukYazi" hidden></div>
+    <div id="kontroller">
+      <div class="grup">
+        <button id="solBtn" class="kontrol">◀</button>
+        <button id="sagBtn" class="kontrol">▶</button>
+      </div>
+      <button id="aletBtn" class="alet" hidden></button>
+      <div class="grup">
+        <button id="donBtn" class="kontrol">⟳</button>
+        <button id="inBtn" class="kontrol">▼</button>
+      </div>
+    </div>
+    <div id="kontrolIpucu" class="ipucu">← → kaydır · ↑ döndür · ↓ hızlı indir · Shift alet</div>
+  </section>
+
+  <!-- Sonuç -->
+  <section id="sonuc" class="ekran perde" hidden>
+    <div class="kart genis">
+      <h2 id="sonucBaslik"></h2>
+      <p id="sonucYazi" class="alt"></p>
+      <div id="sonucListe" class="sonucListe"></div>
+      <p id="sonucBekle" class="durum">Oda sahibi yeni oyunu başlatacak…</p>
+      <div class="satir">
+        <button id="lobiyeBtn">↩ Bekleme odası</button>
+        <button id="tekrarBtn" class="ana">🔁 Tekrar oyna</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/planck@1.0.6/dist/planck.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="fizik.js"></script>
+  <script src="bot.js"></script>
+  <script src="ses.js"></script>
+  <script src="sahne.js"></script>
+  <script src="ag.js"></script>
+  <script src="oyun.js"></script>
+  <script>
+    // iPhone sayfayı kendi kendine büyütmesin (iki parmak / çift dokunma)
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+    document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>
