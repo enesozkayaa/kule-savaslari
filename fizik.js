@@ -47,19 +47,19 @@ const Fizik = (() => {
   const ALETLER = {
     zimba: { ad: 'Zımba', ikon: '🔩', iyi: true, acik: 'Kulendeki parçalar yerine çakılır, artık devrilmez.' },
     kalas: { ad: 'Kalas', ikon: '🪵', iyi: true, acik: 'Sıradaki parça uzun, düz bir kalas.' },
-    kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki 2 parça küçük.' },
-    buz: { ad: 'Buz', ikon: '🧊', iyi: false, acik: 'Rakibin sıradaki 3 parçası buz gibi kaygan.' },
+    kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki parça küçük bir tuğla.' },
+    buz: { ad: 'Buz', ikon: '🧊', iyi: false, acik: 'Rakibin sıradaki parçası buz gibi kaygan.' },
     ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 4 saniye sert rüzgâr eser.' },
     dev: { ad: 'Dev Kasa', ikon: '📦', iyi: false, acik: 'Rakibin sıradaki parçası kocaman.' },
-    hiz: { ad: 'Hızlı Vinç', ikon: '⚡', iyi: false, acik: 'Rakibin sıradaki 3 parçası çok hızlı iner.' },
+    hiz: { ad: 'Hızlı Vinç', ikon: '⚡', iyi: false, acik: 'Rakibin sıradaki parçası çok hızlı iner.' },
     sarmasik: { ad: 'Sarmaşık', ikon: '🌿', iyi: true, acik: 'Sıradaki parçan sarmaşıklı: değdiği en yakın 2 parçaya sarılır, 3ü tek parça gibi birbirini tutar.' },
     ucgen: { ad: 'Sivri Taş', ikon: '🔺', iyi: false, acik: 'Rakibin sıradaki parçası sivri bir üçgen taş: üstü düz değil, koyması zor.' },
     varil: { ad: 'Varil', ikon: '🛢️', iyi: false, acik: 'Rakibin sıradaki parçası yuvarlak bir varil: yuvarlanıp kaçar.' },
     sis: { ad: 'Sis', ikon: '🌫️', iyi: false, acik: 'Rakibin ekranı 5 saniye sisle kaplanır.' },
-    ters: { ad: 'Ters Kumanda', ikon: '🔄', iyi: false, acik: 'Rakibin sağ-sol tuşları 2 parça boyunca ters çalışır.' },
+    ters: { ad: 'Ters Kumanda', ikon: '🔄', iyi: false, acik: 'Rakibin sıradaki parçasında sağ-sol tuşları ters çalışır.' },
     balon: { ad: 'Balon', ikon: '🎈', iyi: false, acik: 'Rakibin sıradaki parçası balon gibi hafif: en ufak şeyde savrulur.' },
-    miknatis: { ad: 'Mıknatıs', ikon: '🧲', iyi: true, acik: 'Sıradaki 3 parçan değdiği yere yapışır, kaymaz.' },
-    yavas: { ad: 'Yavaş Vinç', ikon: '🐢', iyi: true, acik: 'Sıradaki 3 parçan çok yavaş iner, düşünmeye vakit kalır.' },
+    miknatis: { ad: 'Mıknatıs', ikon: '🧲', iyi: true, acik: 'Sıradaki parçan değdiği yere yapışır, kaymaz.' },
+    yavas: { ad: 'Yavaş Vinç', ikon: '🐢', iyi: true, acik: 'Sıradaki parçan çok yavaş iner, düşünmeye vakit kalır.' },
     tamir: { ad: 'Tamir', ikon: '🛠️', iyi: true, acik: '1 can geri kazanırsın (Yarış modunda gelmez).' },
   };
   const ALET_LISTE = Object.keys(ALETLER);
@@ -282,18 +282,18 @@ const Fizik = (() => {
           if (p.durum === 'serbest' && p.b.getLinearVelocity().length() < 1 && Math.abs(p.b.getAngularVelocity()) < 1) { p.b.setStatic(); p.durum = 'sabit'; }
         });
       } else if (ad === 'kalas') e.kalas = 1;
-      else if (ad === 'kucuk') e.kucuk = 2;
-      else if (ad === 'buz') e.buz = 3;
+      else if (ad === 'kucuk') e.kucuk = 1;
+      else if (ad === 'buz') e.buz = 1;
       else if (ad === 'dev') e.dev = 1;
-      else if (ad === 'hiz') e.hiz = 3;
+      else if (ad === 'hiz') e.hiz = 1;
       else if (ad === 'ruzgar') { e.ruzgar = 4; e.ruzYon = Math.random() < 0.5 ? -1 : 1; }
       else if (ad === 'sarmasik') e.sarmasik = 1;
       else if (ad === 'ucgen') e.ucgen = 1;
       else if (ad === 'varil') e.varil = 1;
-      else if (ad === 'ters') e.ters = 2;
+      else if (ad === 'ters') e.ters = 1;
       else if (ad === 'balon') e.balon = 1;
-      else if (ad === 'miknatis') e.miknatis = 3;
-      else if (ad === 'yavas') e.yavas = 3;
+      else if (ad === 'miknatis') e.miknatis = 1;
+      else if (ad === 'yavas') e.yavas = 1;
       else if (ad === 'tamir') this.can = Math.min(3, this.can + 1);
       this.olay('etki', ad);
     }
