@@ -336,13 +336,24 @@
     const t = e.key;
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(t)) e.preventDefault();
     if (!k) return;
-    if (t === 'ArrowLeft' || t === 'a' || t === 'A') k.oynat(-1);
-    else if (t === 'ArrowRight' || t === 'd' || t === 'D') k.oynat(1);
+    if (t === 'ArrowLeft' || t === 'a' || t === 'A') { if (!e.repeat) yonBasla(-1); }
+    else if (t === 'ArrowRight' || t === 'd' || t === 'D') { if (!e.repeat) yonBasla(1); }
     else if ((t === 'ArrowUp' || t === 'w' || t === 'W' || t === ' ') && !e.repeat) k.dondur();
     else if (t === 'ArrowDown' || t === 's' || t === 'S') k.hizlandir(true);
     else if ((t === 'Shift' || t === 'e' || t === 'E') && !e.repeat) benimAletim();
   });
+  // Basılı tutunca: kısa bekleme, sonra hızlı tekrar (duvara/parçaya kadar kayar)
+  const BEKLE = 150, TEKRAR = 40, yonZam = {};
+  function yonBasla(yon) {
+    if (yonZam[yon]) return;
+    kule()?.oynat(yon);
+    yonZam[yon] = { z: setTimeout(() => { yonZam[yon].i = setInterval(() => kule()?.oynat(yon), TEKRAR); }, BEKLE) };
+  }
+  function yonBirak(yon) { const y = yonZam[yon]; if (!y) return; clearTimeout(y.z); clearInterval(y.i); delete yonZam[yon]; }
+  window.addEventListener('blur', () => { yonBirak(-1); yonBirak(1); });
   window.addEventListener('keyup', e => {
+    if (['ArrowLeft', 'a', 'A'].includes(e.key)) yonBirak(-1);
+    if (['ArrowRight', 'd', 'D'].includes(e.key)) yonBirak(1);
     const k = kule(); if (!k) return;
     if (['ArrowDown', 's', 'S'].includes(e.key)) k.hizlandir(false);
   });
@@ -354,7 +365,7 @@
       e.preventDefault(); Ses.ac(); btn.classList.add('basili');
       try { btn.setPointerCapture(e.pointerId); } catch (x) { }
       bas(true);
-      if (!birak) zam = setTimeout(() => { tekrar = setInterval(() => bas(false), 85); }, 230);
+      if (!birak) zam = setTimeout(() => { tekrar = setInterval(() => bas(false), TEKRAR); }, BEKLE);
     });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => btn.addEventListener(t, dur));
     btn.addEventListener('contextmenu', e => e.preventDefault());

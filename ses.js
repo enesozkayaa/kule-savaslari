@@ -45,7 +45,7 @@ const Ses = (() => {
     ayarla: a => { acik = a; try { localStorage.setItem('ks.ses', a ? '1' : '0'); } catch (e) { } },
     oynat: () => ton(520, 0.04, 'square', 0.035),
     dondur: () => { ton(700, 0.07, 'triangle', 0.08, 0, 300); },
-    takildi: () => ton(160, 0.08, 'square', 0.05),
+    takildi: (() => { let son = 0; return () => { const s = performance.now(); if (s - son < 250) return; son = s; ton(160, 0.08, 'square', 0.05); }; })(),
     koy: () => { gurultu(0.12, 0.45, 500); ton(110, 0.15, 'sine', 0.25, 0, -40); },
     carp: v => { const s = performance.now(); if (s - sonCarp < 70) return; sonCarp = s; const k = Math.min(1, v / 8); gurultu(0.08, 0.15 + k * 0.35, 380 + k * 500); ton(90 + Math.random() * 40, 0.1, 'sine', 0.08 + k * 0.15); },
     dustu: () => { ton(900, 0.7, 'sine', 0.12, 0, -760); gurultu(0.5, 0.6, 700, 'lowpass', 0.6); ton(70, 0.4, 'sine', 0.3, 0.6, -30); },

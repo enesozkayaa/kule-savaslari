@@ -11,6 +11,7 @@ const Fizik = (() => {
   const DUSME_Y = -7;           // bunun altına düşen parça kaybolur
   const ADIM = 1 / 60;
   const SURTUNME = 1.0, DONME_SONUM = 0.8;
+  const KILIT = 0.5, KILIT_EN_FAZLA = 2.5;   // yere değince kaydırma payı (sn) ve en uzun toplam süre
 
   // Parça şekilleri: hücreler (1x1) → gövde merkezine göre dikdörtgenler
   const HUCRE = {
@@ -114,6 +115,7 @@ const Fizik = (() => {
       this.parcalar.push(parca);
       this.aktif = parca;
       this.hizli = false;
+      this.kilitT = 0; this.kilitTop = 0; this.degiyor = false;
       this.olay('yeni', parca);
     }
 
@@ -198,6 +200,7 @@ const Fizik = (() => {
       const nx = pos.x + dx * 0.5;
       if (Math.abs(nx) > 9 || this._cakisir(nx, pos.y, a)) { this.olay('takildi'); return false; }
       p.b.setTransform(V(nx, pos.y), a);
+      if (this.degiyor) this.kilitT = 0;   // yerdeyken kaydırınca süre baştan
       this.olay('oynat');
       return true;
     }
@@ -210,6 +213,7 @@ const Fizik = (() => {
         this.olay('takildi'); return false;
       }
       p.b.setTransform(pos, a);
+      if (this.degiyor) this.kilitT = 0;
       this.olay('dondur');
       return true;
     }
@@ -241,6 +245,7 @@ const Fizik = (() => {
       const p = this.aktif;
       if (p) {
         let hiz = (this.hizli ? 13 : 2.1) * (p.hiz ? 2.6 : 1);
+        if (this.degiyor) hiz = 0.3;   // yere değmiş, kaydırılıyor: alttakini ezmesin
         // Yumuşak iniş: altında bir şey varsa son anda yavaşla (kuleyi sarsmasın)
         if (hiz > 2.1) {
           const pos = p.b.getPosition(), a = p.b.getAngle();
@@ -254,7 +259,15 @@ const Fizik = (() => {
         this.parcalar.forEach(q => { if (q.durum === 'serbest') { q.b.applyForceToCenter(V(this.etki.ruzYon * q.b.getMass() * 3.2, 0), true); } });
       }
       this.dunya.step(dt, 10, 8);
-      if (this.aktif && this._alttanDegiyor(this.aktif.b)) this._birakUygula(this.aktif);
+      // Yere değen parça hemen bırakılmaz: KILIT süresince sağa-sola kaydırılabilir (altlara sokmak için).
+      // Hızlı indirme basılıysa hemen bırakılır.
+      if (this.aktif) {
+        this.degiyor = this._alttanDegiyor(this.aktif.b);
+        if (this.degiyor) {
+          this.kilitT += dt; this.kilitTop += dt;
+          if (this.hizli || this.kilitT >= KILIT || this.kilitTop >= KILIT_EN_FAZLA) { this.degiyor = false; this._birakUygula(this.aktif); }
+        } else this.kilitT = 0;
+      }
 
       // Düşenler
       for (const q of this.parcalar.slice()) {
