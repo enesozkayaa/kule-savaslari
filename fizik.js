@@ -49,7 +49,7 @@ const Fizik = (() => {
     kalas: { ad: 'Kalas', ikon: '🪵', iyi: true, acik: 'Sıradaki parça uzun, düz bir kalas.' },
     kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki parça küçük bir tuğla.' },
     buz: { ad: 'Buz', ikon: '🧊', iyi: false, acik: 'Rakibin sıradaki parçası buz gibi kaygan.' },
-    ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 4 saniye sert rüzgâr eser.' },
+    ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 3 saniye sert rüzgâr eser.' },
     dev: { ad: 'Dev Kasa', ikon: '📦', iyi: false, acik: 'Rakibin sıradaki parçası kocaman.' },
     hiz: { ad: 'Hızlı Vinç', ikon: '⚡', iyi: false, acik: 'Rakibin sıradaki parçası çok hızlı iner.' },
     sarmasik: { ad: 'Sarmaşık', ikon: '🌿', iyi: true, acik: 'Sıradaki parçan sarmaşıklı: değdiği en yakın 2 parçaya sarılır, 3ü tek parça gibi birbirini tutar.' },
@@ -286,7 +286,7 @@ const Fizik = (() => {
       else if (ad === 'buz') e.buz = 1;
       else if (ad === 'dev') e.dev = 1;
       else if (ad === 'hiz') e.hiz = 1;
-      else if (ad === 'ruzgar') { e.ruzgar = 4; e.ruzYon = Math.random() < 0.5 ? -1 : 1; }
+      else if (ad === 'ruzgar') { e.ruzgar = 3; e.ruzYon = Math.random() < 0.5 ? -1 : 1; }
       else if (ad === 'sarmasik') e.sarmasik = 1;
       else if (ad === 'ucgen') e.ucgen = 1;
       else if (ad === 'varil') e.varil = 1;

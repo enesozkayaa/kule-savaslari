@@ -300,7 +300,7 @@
     const k = O.kuleler.get(m.hedef);
     if (k) k.aletUygula(m.ad);
     if (m.hedef === benimId() || m.kimden === benimId()) {
-      ({ zimba: Ses.zimba, kalas: Ses.aletKullan, kucuk: Ses.aletKullan, buz: Ses.buz, ruzgar: () => Ses.ruzgar(4), dev: Ses.dev, hiz: Ses.hiz,
+      ({ zimba: Ses.zimba, kalas: Ses.aletKullan, kucuk: Ses.aletKullan, buz: Ses.buz, ruzgar: () => Ses.ruzgar(3), dev: Ses.dev, hiz: Ses.hiz,
         sarmasik: Ses.aletKullan, ucgen: Ses.dev, varil: Ses.dev, sis: () => Ses.ruzgar(2), ters: Ses.hiz, balon: Ses.balon,
         miknatis: Ses.zimba, yavas: Ses.aletKullan, tamir: Ses.aletGeldi })[m.ad]?.();
       if (m.ad === 'sis' && m.hedef === benimId()) sisGetir(5);
