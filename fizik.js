@@ -55,6 +55,12 @@ const Fizik = (() => {
     sarmasik: { ad: 'Sarmaşık', ikon: '🌿', iyi: true, acik: 'Sıradaki parçan sarmaşıklı: değdiği en yakın 2 parçaya sarılır, 3ü tek parça gibi birbirini tutar.' },
     ucgen: { ad: 'Sivri Taş', ikon: '🔺', iyi: false, acik: 'Rakibin sıradaki parçası sivri bir üçgen taş: üstü düz değil, koyması zor.' },
     varil: { ad: 'Varil', ikon: '🛢️', iyi: false, acik: 'Rakibin sıradaki parçası yuvarlak bir varil: yuvarlanıp kaçar.' },
+    sis: { ad: 'Sis', ikon: '🌫️', iyi: false, acik: 'Rakibin ekranı 5 saniye sisle kaplanır.' },
+    ters: { ad: 'Ters Kumanda', ikon: '🔄', iyi: false, acik: 'Rakibin sağ-sol tuşları 2 parça boyunca ters çalışır.' },
+    balon: { ad: 'Balon', ikon: '🎈', iyi: false, acik: 'Rakibin sıradaki parçası balon gibi hafif: en ufak şeyde savrulur.' },
+    miknatis: { ad: 'Mıknatıs', ikon: '🧲', iyi: true, acik: 'Sıradaki 3 parçan değdiği yere yapışır, kaymaz.' },
+    yavas: { ad: 'Yavaş Vinç', ikon: '🐢', iyi: true, acik: 'Sıradaki 3 parçan çok yavaş iner, düşünmeye vakit kalır.' },
+    tamir: { ad: 'Tamir', ikon: '🛠️', iyi: true, acik: '1 can geri kazanırsın (Yarış modunda gelmez).' },
   };
   const ALET_LISTE = Object.keys(ALETLER);
   const ALET_HER = 4;           // her 4 parçada bir alet
@@ -73,6 +79,7 @@ const Fizik = (() => {
 
   class Kule {
     // ayar: { tohum, mod, uzunluk }
+    // ayar.aletler: oyunda açık aletler (bekleme odasında seçilir)
     constructor(ayar) {
       this.mod = ayar.mod; this.uzunluk = ayar.uzunluk ?? 1;
       this.hedef = MOD[this.mod].hedef[this.uzunluk];
@@ -89,7 +96,8 @@ const Fizik = (() => {
       this.bekle = 0.8;
       this.yer = 0; this.can = 3; this.elendi = false; this.neden = ''; this.zafer = false; this.durdu = false;
       this.ust = 0; this.sayac = 0;  // yarış: çizgide bekleme / bulmaca: lazerde bekleme
-      this.etki = { buz: 0, hiz: 0, kucuk: 0, dev: 0, kalas: 0, ruzgar: 0, ruzYon: 1, ucgen: 0, varil: 0, sarmasik: 0 };
+      this.etki = { buz: 0, hiz: 0, kucuk: 0, dev: 0, kalas: 0, ruzgar: 0, ruzYon: 1, ucgen: 0, varil: 0, sarmasik: 0, ters: 0, balon: 0, miknatis: 0, yavas: 0 };
+      this.aletListe = (Array.isArray(ayar.aletler) ? ayar.aletler : ALET_LISTE).filter(a => ALETLER[a] && !(a === 'tamir' && this.mod === 'yaris'));
       this.alet = null; this.aletSay = 0;
       this.birikim = 0;
       this.olay = () => {};
@@ -97,13 +105,24 @@ const Fizik = (() => {
       this.dunya.on('begin-contact', c => this._temas(c));
     }
 
-    _sonraki() {
+    _torbaDoldur() {
       if (!this.torba.length) {
         const t = NORMAL.slice();
         for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(this.rnd() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; }
         this.torba = t;
       }
-      return this.torba.shift();
+    }
+    _sonraki() { this._torbaDoldur(); return this.torba.shift(); }
+    // Sıradaki parça ne olacak? (önizleme için; hiçbir şeyi değiştirmez, küçük tuğla seçimi önceden yapılır)
+    siradaki() {
+      const e = this.etki;
+      let tip;
+      if (e.ucgen > 0) tip = 'UCGEN';
+      else if (e.varil > 0) tip = 'VARIL';
+      else if (e.kalas > 0) tip = 'KALAS';
+      else if (e.kucuk > 0) tip = this._kucukTip || (this._kucukTip = Math.random() < 0.5 ? 'K1' : 'K2');
+      else { this._torbaDoldur(); tip = this.torba[0]; }
+      return { tip, dev: e.dev > 0 && tip !== 'KALAS', buz: e.buz > 0, balon: e.balon > 0, sarmasik: e.sarmasik > 0, miknatis: e.miknatis > 0 };
     }
 
     _parcaYap() {
@@ -112,15 +131,20 @@ const Fizik = (() => {
       if (e.ucgen > 0) { e.ucgen--; tip = 'UCGEN'; }
       else if (e.varil > 0) { e.varil--; tip = 'VARIL'; }
       else if (e.kalas > 0) { e.kalas--; tip = 'KALAS'; }
-      else if (e.kucuk > 0) { e.kucuk--; tip = Math.random() < 0.5 ? 'K1' : 'K2'; }
+      else if (e.kucuk > 0) { e.kucuk--; tip = this._kucukTip || (Math.random() < 0.5 ? 'K1' : 'K2'); this._kucukTip = null; }
       else tip = this._sonraki();
       if (e.dev > 0 && tip !== 'KALAS') { e.dev--; olcek = 1.7; }
       if (e.buz > 0) { e.buz--; buz = true; }
       if (e.hiz > 0) { e.hiz--; hiz = true; }
       if (e.sarmasik > 0) { e.sarmasik--; sarmasik = true; }
+      let ters = false, balon = false, miknatis = false, yavas = false;
+      if (e.ters > 0) { e.ters--; ters = true; }
+      if (e.balon > 0) { e.balon--; balon = true; }
+      if (e.miknatis > 0) { e.miknatis--; miknatis = true; }
+      if (e.yavas > 0) { e.yavas--; yavas = true; }
       const y = Math.max(this.ust, 0) + 9 + (olcek > 1 ? 1.5 : 0);
       const b = this.dunya.createBody({ type: 'dynamic', position: V(0, y), fixedRotation: true, gravityScale: 0, angularDamping: DONME_SONUM, linearDamping: 0.05 });
-      const ozellik = { density: 1, friction: buz ? 0.02 : SURTUNME, restitution: 0 };
+      const ozellik = { density: balon ? 0.12 : 1, friction: buz ? 0.02 : miknatis ? 2.5 : SURTUNME, restitution: 0 };
       SEKIL[tip].forEach(r => {
         let sekil;
         if (r.ucgen) sekil = pl.Polygon(UCGEN_KOSE.map(([x, y]) => V(x * olcek * 0.97, y * olcek * 0.97)));
@@ -128,7 +152,7 @@ const Fizik = (() => {
         else sekil = pl.Box(r.w * olcek / 2 * 0.97, r.h * olcek / 2 * 0.97, V(r.x * olcek, r.y * olcek), 0);
         b.createFixture(sekil, { ...ozellik, friction: r.daire && !buz ? 0.6 : ozellik.friction });
       });
-      const parca = { id: ++this.sonId, tip, olcek, buz, hiz, sarmasik, b, durum: 'aktif', sayildi: false };
+      const parca = { id: ++this.sonId, tip, olcek, buz, hiz, sarmasik, ters, balon, miknatis, yavas, b, durum: 'aktif', sayildi: false };
       b.setUserData(parca);
       this.parcalar.push(parca);
       this.aktif = parca;
@@ -158,13 +182,16 @@ const Fizik = (() => {
       const v = b.getLinearVelocity();
       b.setLinearVelocity(V(0, Math.max(v.y, -4)));
       p.durum = 'serbest'; p.sayildi = true;
+      if (p.balon) { b.setGravityScale(0.45); b.setLinearDamping(0.5); }   // balon: hafif, süzülür
       this.aktif = null;
       this.yer++;
       this.bekle = 0.45;
       if (p.sarmasik) { p.sarT = SARMASIK_BEKLE; p.sarDene = 1.5; }   // biraz otursun, sonra sarılsın
+      if (p.miknatis) { p.mikT = 0.15; }                               // mıknatıs: değdiği yere hemen yapışır
       this.olay('koy', p);
       if (++this.aletSay % ALET_HER === 0 && !this.alet) {
-        this.alet = ALET_LISTE[Math.floor(Math.random() * ALET_LISTE.length)];
+        if (!this.aletListe.length) return;
+        this.alet = this.aletListe[Math.floor(Math.random() * this.aletListe.length)];
         this.olay('aletGeldi', this.alet);
       }
     }
@@ -224,6 +251,7 @@ const Fizik = (() => {
     oynat(dx) {
       const p = this.aktif; if (!p || this.durdu) return false;
       const pos = p.b.getPosition(), a = p.b.getAngle();
+      if (p.ters) dx = -dx;   // ters kumanda
       const nx = pos.x + dx * 0.5;
       if (Math.abs(nx) > 9 || this._cakisir(nx, pos.y, a)) { this.olay('takildi'); return false; }
       p.b.setTransform(V(nx, pos.y), a);
@@ -262,6 +290,11 @@ const Fizik = (() => {
       else if (ad === 'sarmasik') e.sarmasik = 1;
       else if (ad === 'ucgen') e.ucgen = 1;
       else if (ad === 'varil') e.varil = 1;
+      else if (ad === 'ters') e.ters = 2;
+      else if (ad === 'balon') e.balon = 1;
+      else if (ad === 'miknatis') e.miknatis = 3;
+      else if (ad === 'yavas') e.yavas = 3;
+      else if (ad === 'tamir') this.can = Math.min(3, this.can + 1);
       this.olay('etki', ad);
     }
 
@@ -274,7 +307,7 @@ const Fizik = (() => {
     _adim(dt) {
       const p = this.aktif;
       if (p) {
-        let hiz = (this.hizli ? 13 : 2.1) * (p.hiz ? 2.6 : 1);
+        let hiz = (this.hizli ? 13 : p.yavas ? 0.9 : 2.1) * (p.hiz ? 2.6 : 1);
         if (this.degiyor) hiz = 0.3;   // yere değmiş, kaydırılıyor: alttakini ezmesin
         // Yumuşak iniş: altında bir şey varsa son anda yavaşla (kuleyi sarsmasın)
         if (hiz > 2.1) {
@@ -320,6 +353,23 @@ const Fizik = (() => {
         });
         q.sarili = true; q.sarT = null;
         this.olay('sarildi', Math.min(komsu.length, SARMASIK_N));
+      });
+
+      // Mıknatıs: oturduğu parçaya / platforma kaynaklanır (en fazla 2 yere)
+      this.parcalar.forEach(q => {
+        if (q.mikT === undefined || q.mikT === null) return;
+        q.mikT -= dt;
+        if (q.mikT > 0) return;
+        let n = 0;
+        for (let ce = q.b.getContactList(); ce && n < 2; ce = ce.next) {
+          if (!ce.contact.isTouching()) continue;
+          const o = ce.other, ud = o.getUserData();
+          if (ud && ud.durum === 'aktif') continue;
+          const a = q.b.getPosition(), b2 = o.getPosition();
+          this.dunya.createJoint(pl.WeldJoint({}, q.b, o, V((a.x + b2.x) / 2, (a.y + b2.y) / 2)));
+          n++;
+        }
+        q.mikT = null;
       });
 
       // Düşenler
@@ -385,7 +435,7 @@ const Fizik = (() => {
         p: this.parcalar.map(q => {
           const pos = q.b.getPosition();
           return [q.id, TIP_KOD.indexOf(q.tip), Math.round(pos.x * 100), Math.round(pos.y * 100), Math.round(q.b.getAngle() * 1000), Math.round(q.olcek * 10),
-            (q.buz ? 1 : 0) | (q.durum === 'sabit' ? 2 : 0) | (q.durum === 'aktif' ? 4 : 0) | (q.sarmasik || q.sarili ? 8 : 0)];
+            (q.buz ? 1 : 0) | (q.durum === 'sabit' ? 2 : 0) | (q.durum === 'aktif' ? 4 : 0) | (q.sarmasik || q.sarili ? 8 : 0) | (q.miknatis ? 16 : 0) | (q.balon ? 32 : 0)];
         }),
         ust: Math.round(this.ust * 100) / 100, yer: this.yer, can: this.can, el: this.elendi ? 1 : 0, ne: this.neden, z: this.zafer ? 1 : 0,
         s: Math.round(this.sayac * 10) / 10, al: this.alet, rz: this.etki.ruzgar > 0 ? this.etki.ruzYon : 0,
@@ -395,14 +445,14 @@ const Fizik = (() => {
     parcaListesi() {
       return this.parcalar.map(q => {
         const pos = q.b.getPosition();
-        return { id: q.id, tip: q.tip, x: pos.x, y: pos.y, a: q.b.getAngle(), olcek: q.olcek, buz: q.buz, sabit: q.durum === 'sabit', aktif: q.durum === 'aktif', sarmasik: !!(q.sarmasik || q.sarili) };
+        return { id: q.id, tip: q.tip, x: pos.x, y: pos.y, a: q.b.getAngle(), olcek: q.olcek, buz: q.buz, sabit: q.durum === 'sabit', aktif: q.durum === 'aktif', sarmasik: !!(q.sarmasik || q.sarili), miknatis: !!q.miknatis, balon: !!q.balon };
       });
     }
   }
 
   // Ağdan gelen özeti çizilecek listeye çevir
   function ozetCoz(o) {
-    return (o?.p || []).map(([id, t, x, y, a, s, f]) => ({ id, tip: TIP_KOD[t], x: x / 100, y: y / 100, a: a / 1000, olcek: s / 10, buz: !!(f & 1), sabit: !!(f & 2), aktif: !!(f & 4), sarmasik: !!(f & 8) }));
+    return (o?.p || []).map(([id, t, x, y, a, s, f]) => ({ id, tip: TIP_KOD[t], x: x / 100, y: y / 100, a: a / 1000, olcek: s / 10, buz: !!(f & 1), sabit: !!(f & 2), aktif: !!(f & 4), sarmasik: !!(f & 8), miknatis: !!(f & 16), balon: !!(f & 32) }));
   }
 
   return { Kule, SEKIL, ALETLER, ALET_LISTE, MOD, PLATFORM, UCGEN_KOSE, ozetCoz, tohumlu };

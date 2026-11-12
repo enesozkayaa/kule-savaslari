@@ -16,7 +16,7 @@
 
   const D = {
     ad: '', yerel: false,
-    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, botlar: [] },
+    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, aletler: Fizik.ALET_LISTE.slice(), botlar: [] },
     mac: null,          // ev: { hedef, puan: {id: toplam}, tur, bitti }
     oyun: null,
   };
@@ -157,6 +157,7 @@
     sec($('#zorlukSec'), ZORLUK, D.lobi.zorluk, d => { D.lobi.zorluk = d; lobiDegisti(); });
     $('#zorlukSatir').hidden = !D.lobi.botlar.length;
     sec($('#macSec'), MAC_PUAN.map(p => [p, `${p} puan`]), D.lobi.macPuan ?? 5, d => { D.lobi.macPuan = d; lobiDegisti(); });
+    aletSecCiz(ev);
     const m = Fizik.MOD[D.lobi.mod], h = m.hedef[D.lobi.uzunluk];
     $('#modAciklama').textContent = `${m.acik} ${D.lobi.mod === 'yaris' ? `(Bitiş: ${h} m)` : D.lobi.mod === 'hayatta' ? `(Hedef: ${h} parça, 3 can)` : `(Lazer: ${h} m, 3 can)`}`;
     $('#baslatBtn').hidden = !ev;
@@ -164,6 +165,24 @@
     sesDugme();
   }
   $('#botEkleBtn').onclick = () => { botEkle(); lobiDegisti(); };
+  // Alet seçimi: her alet açık/kapalı (oda sahibi seçer)
+  function aletSecCiz(ev) {
+    const acik = new Set(D.lobi.aletler || Fizik.ALET_LISTE);
+    const kap = $('#aletSec'); kap.innerHTML = '';
+    Fizik.ALET_LISTE.forEach(a => {
+      const al = Fizik.ALETLER[a];
+      const b = document.createElement('button');
+      b.className = 'aletCip ' + (al.iyi ? 'iyi' : 'kotu') + (acik.has(a) ? ' secili' : '');
+      b.innerHTML = `<span>${al.ikon}</span><b>${al.ad}</b><small>${al.acik}</small>`;
+      b.disabled = !ev;
+      b.onclick = () => { if (acik.has(a)) acik.delete(a); else acik.add(a); D.lobi.aletler = Fizik.ALET_LISTE.filter(x => acik.has(x)); lobiDegisti(); };
+      kap.appendChild(b);
+    });
+    $('#aletSayi').textContent = `${acik.size} / ${Fizik.ALET_LISTE.length}`;
+    $('#aletHepsi').hidden = $('#aletHicbiri').hidden = !ev;
+  }
+  $('#aletHepsi').onclick = () => { D.lobi.aletler = Fizik.ALET_LISTE.slice(); lobiDegisti(); };
+  $('#aletHicbiri').onclick = () => { D.lobi.aletler = []; lobiDegisti(); };
   $('#cikBtn').onclick = () => { Ag.kapat(); D.yerel = false; goster('#giris'); };
   // Yeni maç: puanlar sıfırlanır, ilk tur başlar
   $('#baslatBtn').onclick = () => {
@@ -176,7 +195,7 @@
     if (!evMi() || !D.mac) return;
     clearTimeout(D.sonrakiZam);
     D.mac.tur++;
-    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk,
+    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk, aletler: D.lobi.aletler,
       mac: { hedef: D.mac.hedef, puan: D.mac.puan, tur: D.mac.tur },
       oyuncular: tumOyuncular().map(({ id, ad, bot, ikon }) => ({ id, ad, bot: !!bot, ikon })) });
   }
@@ -210,7 +229,7 @@
       kuleler: new Map(), botlar: new Map(), uzak: new Map(),
       basT: performance.now() + 3200, basladi: false, bitti: false, gondermeT: 0, kontrolT: 0, sonSayac: 4,
     };
-    const yeniKule = () => new Fizik.Kule({ tohum: m.tohum, mod: m.mod, uzunluk: m.uzunluk });
+    const yeniKule = () => new Fizik.Kule({ tohum: m.tohum, mod: m.mod, uzunluk: m.uzunluk, aletler: m.aletler });
     if (O.benIdx >= 0) {
       const k = yeniKule(); k.olay = (t, v) => benimOlay(t, v); O.kuleler.set(ben, k);
     }
@@ -220,6 +239,9 @@
     });
     Sahne.oyunKur(m.oyuncular.length, m.mod, O.hedef);
     etiketleriKur();
+    // üstte: hangi moddayız
+    const md = Fizik.MOD[m.mod], hedefYazi = m.mod === 'yaris' ? `bitiş ${O.hedef} m` : m.mod === 'hayatta' ? `${O.hedef} parça · 3 can` : `lazer ${O.hedef} m · 3 can`;
+    $('#modYazi').innerHTML = `${md.ikon} <b>${md.ad}</b> · ${hedefYazi}${m.mac ? ` · ${m.mac.tur}. tur · maç ${m.mac.hedef} puan` : ''}`;
     goster('#oyun');
     $('#aletBtn').hidden = true;
     $('#kontrolIpucu').hidden = matchMedia('(pointer: coarse)').matches;
@@ -232,6 +254,8 @@
     Sahne.temizle();
     $('#etiketler').innerHTML = '';
     $('#sonuc').hidden = true;
+    $('#sis').hidden = true;
+    $('#sonrakiKutu').hidden = true; sonrakiAnahtar = '';
   }
 
   // Benim kulemden gelen olaylar → ses + yazı
@@ -277,7 +301,9 @@
     if (k) k.aletUygula(m.ad);
     if (m.hedef === benimId() || m.kimden === benimId()) {
       ({ zimba: Ses.zimba, kalas: Ses.aletKullan, kucuk: Ses.aletKullan, buz: Ses.buz, ruzgar: () => Ses.ruzgar(4), dev: Ses.dev, hiz: Ses.hiz,
-        sarmasik: Ses.aletKullan, ucgen: Ses.dev, varil: Ses.dev })[m.ad]?.();
+        sarmasik: Ses.aletKullan, ucgen: Ses.dev, varil: Ses.dev, sis: () => Ses.ruzgar(2), ters: Ses.hiz, balon: Ses.balon,
+        miknatis: Ses.zimba, yavas: Ses.aletKullan, tamir: Ses.aletGeldi })[m.ad]?.();
+      if (m.ad === 'sis' && m.hedef === benimId()) sisGetir(5);
     }
     if (a.iyi) duyuru(`${a.ikon} ${ad(m.kimden)}: <b>${a.ad}</b>`);
     else duyuru(`${a.ikon} ${ad(m.kimden)} → ${m.hedef === benimId() ? '<b>SANA</b>' : ad(m.hedef)}: <b>${a.ad}</b>!`, m.hedef === benimId());
@@ -438,7 +464,19 @@
       const kalpler = O.mod === 'yaris' ? '' : ' ' + '❤️'.repeat(Math.max(0, d.can ?? 3)) + '🖤'.repeat(Math.max(0, 3 - (d.can ?? 3)));
       const deger = O.mod === 'yaris' ? `🏗️ ${(d.ust || 0).toFixed(1)} / ${O.hedef} m`
         : O.mod === 'hayatta' ? `🧱 ${d.yer || 0} / ${O.hedef}${kalpler}` : `🧱 ${d.yer || 0}${kalpler}`;
-      el.querySelector('.deger').innerHTML = deger;
+      // benim üstümdeki etkiler (kaç parça kaldı)
+      let etk = '';
+      if (a.ana) {
+        const k = O.kuleler.get(o.id);
+        if (k) {
+          const e = k.etki, akt = k.aktif || {};
+          const say = (ikon, n) => (n > 0 ? `${ikon}${n > 1 ? n : ''} ` : '');
+          etk = say('🔄', e.ters + (akt.ters ? 1 : 0)) + say('🧊', e.buz + (akt.buz ? 1 : 0)) + say('⚡', e.hiz + (akt.hiz ? 1 : 0)) + say('🐢', e.yavas + (akt.yavas ? 1 : 0))
+            + say('🧲', e.miknatis + (akt.miknatis ? 1 : 0)) + say('🎈', e.balon + (akt.balon ? 1 : 0)) + say('🌬️', e.ruzgar > 0 ? 1 : 0);
+        }
+      }
+      el.querySelector('.deger').innerHTML = deger + (etk ? `<br><span class="etkiler">${etk.trim()}</span>` : '');
+      if (a.ana) sonrakiGoster(a, O.kuleler.get(o.id), d);
       let durum = '';
       if (d.z) durum = '🏆 BİTİRDİ!';
       else if (d.el) durum = `❌ ${esc(d.ne || 'Elendi')}`;
@@ -502,6 +540,45 @@
     const alan = yerlesim();
     Sahne.ciz(dt, alan);
     hudGuncelle(alan);
+  }
+
+  // Sıradaki parça önizlemesi (benim kulvarımın sağ üstünde)
+  const RENK = { I: '#f2b705', O: '#b07a3e', T: '#c8452f', L: '#e0842a', J: '#4f78c4', S: '#4a9e48', Z: '#a8489c', K1: '#9a9a96', K2: '#9a9a96', KALAS: '#c99a5a', UCGEN: '#7d7f86', VARIL: '#d63a2a' };
+  let sonrakiAnahtar = '';
+  function sonrakiGoster(a, k, d) {
+    const kutu = $('#sonrakiKutu');
+    if (!k || d.el || d.z || !D.oyun.basladi || D.oyun.bitti) { kutu.hidden = true; return; }
+    kutu.hidden = false;
+    kutu.style.left = (a.x + a.w - 78) + 'px';
+    const s = k.siradaki(), anahtar = JSON.stringify(s);
+    if (anahtar === sonrakiAnahtar) return;
+    sonrakiAnahtar = anahtar;
+    const c = $('#sonraki'), g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    const sek = Fizik.SEKIL[s.tip];
+    let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+    sek.forEach(r => { x0 = Math.min(x0, r.x - r.w / 2); x1 = Math.max(x1, r.x + r.w / 2); y0 = Math.min(y0, r.y - r.h / 2); y1 = Math.max(y1, r.y + r.h / 2); });
+    const olc = Math.min((c.width - 16) / (x1 - x0), (c.height - 16) / (y1 - y0), 26);
+    const cx = c.width / 2 - ((x0 + x1) / 2) * olc, cy = c.height / 2 + ((y0 + y1) / 2) * olc;
+    const renk = s.buz ? '#a8e4fb' : RENK[s.tip] || '#ccc';
+    g.lineWidth = 2; g.strokeStyle = 'rgba(0,0,0,0.55)'; g.fillStyle = renk;
+    sek.forEach(r => {
+      if (r.ucgen) { g.beginPath(); Fizik.UCGEN_KOSE.forEach(([px, py], i) => g[i ? 'lineTo' : 'moveTo'](cx + px * olc, cy - py * olc)); g.closePath(); g.fill(); g.stroke(); }
+      else if (r.daire) { g.beginPath(); g.arc(cx, cy, (r.w / 2) * olc, 0, 7); g.fill(); g.stroke(); }
+      else { const px = cx + (r.x - r.w / 2) * olc, py = cy - (r.y + r.h / 2) * olc; g.fillRect(px + 1, py + 1, r.w * olc - 2, r.h * olc - 2); g.strokeRect(px + 1, py + 1, r.w * olc - 2, r.h * olc - 2); }
+    });
+    $('#sonrakiEtki').textContent = (s.dev ? '📦' : '') + (s.balon ? '🎈' : '') + (s.sarmasik ? '🌿' : '') + (s.miknatis ? '🧲' : '') + (s.buz ? '🧊' : '');
+  }
+
+  // Sis: benim kulvarımın üstüne 5 sn sis perdesi
+  let sisZam = null;
+  function sisGetir(sn) {
+    const O = D.oyun; if (!O) return;
+    const s = $('#sis'), a = yerlesim().find(x => x.ana); if (!a) return;
+    Object.assign(s.style, { left: a.x + 'px', top: a.y + 'px', width: a.w + 'px', height: a.h + 'px' });
+    s.hidden = false; s.classList.remove('kalk'); void s.offsetWidth; s.classList.add('gel');
+    clearTimeout(sisZam);
+    sisZam = setTimeout(() => { s.classList.remove('gel'); s.classList.add('kalk'); setTimeout(() => { s.hidden = true; }, 800); }, sn * 1000);
   }
 
   // ---------- Yardımcılar ----------

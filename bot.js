@@ -175,7 +175,7 @@ const Bot = (() => {
       this.t = this.z.aralik * (0.7 + Math.random() * 0.6);
       if (plan.kalanDon > 0) { if (k.dondur()) plan.kalanDon--; else plan.kalanDon = 0; return; }
       const x = p.b.getPosition().x;
-      if (Math.abs(x - plan.x) > 0.25) { if (!k.oynat(plan.x > x ? 1 : -1)) plan.x = x; return; }
+      if (Math.abs(x - plan.x) > 0.25) { const yon = (plan.x > x ? 1 : -1) * (p.ters ? -1 : 1); if (!k.oynat(yon)) plan.x = x; return; }
       if (!k.hizli && Math.random() < this.z.hizli) k.hizlandir(true);
     }
   }

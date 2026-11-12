@@ -37,7 +37,7 @@
           <li>🏁 <b>Yarış:</b> kuleni bitiş çizgisine ilk ulaştıran ve 3 saniye tutan kazanır.</li>
           <li>❤️ <b>Hayatta Kalma:</b> hedef sayıda parçayı yerleştir. Düşen her parça 1 can götürür, 3 canın var.</li>
           <li>🔴 <b>Lazer Bulmaca:</b> lazerin altında kalarak en çok parçayı yerleştir. Lazere değen ya da canı biten çıkar.</li>
-          <li>Her 4 parçada bir <b>alet</b> kazanırsın: 🔩 Zımba, 🪵 Kalas, 🧱 Küçük tuğla, 🌿 Sarmaşık kendine; 🧊 Buz, 🌬️ Rüzgâr, 📦 Dev kasa, ⚡ Hızlı vinç, 🔺 Sivri taş, 🛢️ Varil öndeki rakibe!</li>
+          <li>Her 4 parçada bir <b>alet</b> kazanırsın: 🔩 Zımba, 🪵 Kalas, 🧱 Küçük tuğla, 🌿 Sarmaşık, 🧲 Mıknatıs, 🐢 Yavaş vinç, 🛠️ Tamir kendine; 🧊 Buz, 🌬️ Rüzgâr, 📦 Dev kasa, ⚡ Hızlı vinç, 🔺 Sivri taş, 🛢️ Varil, 🌫️ Sis, 🔄 Ters kumanda, 🎈 Balon öndeki rakibe! Hangilerinin oyunda olacağını bekleme odasında seçebilirsin.</li>
           <li>🏆 <b>Maç:</b> her turda 1. 3 puan, 2. 2 puan, 3. 1 puan alır. Seçilen puana (3/5/10/15) ilk ulaşan kazanır.</li>
           <li>Bilgisayarda: ← → kaydır, ↑ ya da boşluk döndür, ↓ hızlı indir, Shift alet.</li>
         </ul>
@@ -63,6 +63,11 @@
         <div class="ayar"><span>🏆 Maç</span><div class="secenek" id="macSec"></div></div>
         <p class="modAciklama">Her tur: 1. <b>3 puan</b>, 2. <b>2 puan</b>, 3. <b>1 puan</b>, 4. puan yok. Seçilen puana ilk ulaşan maçı kazanır (3 puan = tek tur).</p>
       </div>
+      <details class="aletler" open>
+        <summary>🧰 Oyundaki aletler <b id="aletSayi"></b> <button id="aletHepsi" class="kucukYazi">Hepsi</button> <button id="aletHicbiri" class="kucukYazi">Hiçbiri</button></summary>
+        <p class="alt kucukAlt">Yeşiller kendine, morlar öndeki rakibe. Kapatmak istediğine dokun.</p>
+        <div id="aletSec" class="aletSec"></div>
+      </details>
       <p id="lobiDurum" class="durum"></p>
       <div class="satir">
         <button id="cikBtn">🚪 Çık</button>
@@ -81,6 +86,9 @@
     </div>
     <div id="duyuru" class="duyuru" hidden></div>
     <div id="buyukYazi" class="buyukYazi" hidden></div>
+    <div id="sis" class="sis" hidden></div>
+    <div id="modYazi" class="modYazi"></div>
+    <div id="sonrakiKutu" class="sonrakiKutu" hidden><small>Sıradaki</small><canvas id="sonraki" width="120" height="96"></canvas><span id="sonrakiEtki"></span></div>
     <div id="kontroller">
       <div class="grup">
         <button id="solBtn" class="kontrol">◀</button>

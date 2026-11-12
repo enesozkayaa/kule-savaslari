@@ -225,6 +225,22 @@ const Sahne = (() => {
     g.userData = { sabit: false, tip: p.tip, buz: p.buz, sarmasik: false };
     return g;
   }
+  // Balon parçası: üstünde iple bağlı kırmızı balon
+  function balonYap(g) {
+    if (g.userData.balon) return;
+    g.userData.balon = true;
+    const kutu = new THREE.Box3().setFromObject(g), ust = kutu.max.y - g.position.y;
+    const ip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 4), mat.koyu); ip.position.set(0, ust + 0.4, 0); g.add(ip);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), new THREE.MeshStandardMaterial({ color: 0xff3d5a, roughness: 0.25, emissive: 0x401018 }));
+    b.scale.y = 1.15; b.position.set(0, ust + 1.15, 0); g.add(b);
+    g.children.filter(m => m.userData.govde && !Array.isArray(m.material)).forEach(m => { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.75; });
+  }
+  // Mıknatıslı parça: kırmızı-gri parıltı
+  function miknatisYap(g) {
+    if (g.userData.miknatis) return;
+    g.userData.miknatis = true;
+    g.children.filter(m => m.userData.govde && !Array.isArray(m.material)).forEach(m => { m.material = m.material.clone(); m.material.emissive = new THREE.Color(0xc02020); m.material.emissiveIntensity = 0.35; });
+  }
   // Sarmaşık sarılı parça: önüne ve arkasına yapraklı sarmaşık katmanı
   function sarmasikYap(g, p) {
     if (g.userData.sarmasik) return;
@@ -320,6 +336,8 @@ const Sahne = (() => {
       if (!g) { g = parcaYap(p); g.position.set(p.x, p.y, 0); g.rotation.z = p.a; k.grup.add(g); k.parca.set(p.id, g); }
       if (p.sabit) sabitYap(g);
       if (p.sarmasik) sarmasikYap(g, p);
+      if (p.balon) balonYap(g);
+      if (p.miknatis) miknatisYap(g);
       g.userData.aktif = p.aktif;
       k.hedefler.set(p.id, p);
       if (yerel) { g.position.set(p.x, p.y, 0); g.rotation.z = p.a; }
