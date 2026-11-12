@@ -12,10 +12,12 @@
   const BOT_AD = [['Kunduz', '🦫'], ['Ayı', '🐻'], ['Tilki', '🦊'], ['Baykuş', '🦉'], ['Rakun', '🦝']];
   const UZUNLUK = ['Kısa', 'Orta', 'Uzun'];
   const ZORLUK = [['kolay', 'Kolay'], ['orta', 'Orta'], ['zor', 'Zor']];
+  const MAC_PUAN = [3, 5, 10, 15], TUR_PUAN = [3, 2, 1, 0];
 
   const D = {
     ad: '', yerel: false,
-    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', botlar: [] },
+    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, botlar: [] },
+    mac: null,          // ev: { hedef, puan: {id: toplam}, tur, bitti }
     oyun: null,
   };
   try { D.ad = localStorage.getItem('ks.ad') || ''; } catch (e) { }
@@ -50,7 +52,7 @@
     else if (m.tip === 'durum') { if (D.oyun && m.id !== benimId()) D.oyun.uzak.set(m.id, m.d); }
     else if (m.tip === 'alet') aletGeldi(m);
     else if (m.tip === 'bitti') oyunBitti(m);
-    else if (m.tip === 'lobiyeDon') { oyunKapat(); goster('#lobi'); lobiCiz(); }
+    else if (m.tip === 'lobiyeDon') { D.mac = null; clearTimeout(D.sonrakiZam); oyunKapat(); goster('#lobi'); lobiCiz(); }
     else if (m.tip === 'ayrildi') { if (D.oyun) duyuru(`🚪 ${m.ad} oyundan ayrıldı`); }
   }
 
@@ -154,6 +156,7 @@
     sec($('#uzunlukSec'), UZUNLUK.map((u, i) => [i, u]), D.lobi.uzunluk, d => { D.lobi.uzunluk = d; lobiDegisti(); });
     sec($('#zorlukSec'), ZORLUK, D.lobi.zorluk, d => { D.lobi.zorluk = d; lobiDegisti(); });
     $('#zorlukSatir').hidden = !D.lobi.botlar.length;
+    sec($('#macSec'), MAC_PUAN.map(p => [p, `${p} puan`]), D.lobi.macPuan ?? 5, d => { D.lobi.macPuan = d; lobiDegisti(); });
     const m = Fizik.MOD[D.lobi.mod], h = m.hedef[D.lobi.uzunluk];
     $('#modAciklama').textContent = `${m.acik} ${D.lobi.mod === 'yaris' ? `(Bitiş: ${h} m)` : D.lobi.mod === 'hayatta' ? `(Hedef: ${h} parça, 3 can)` : `(Lazer: ${h} m, 3 can)`}`;
     $('#baslatBtn').hidden = !ev;
@@ -162,11 +165,21 @@
   }
   $('#botEkleBtn').onclick = () => { botEkle(); lobiDegisti(); };
   $('#cikBtn').onclick = () => { Ag.kapat(); D.yerel = false; goster('#giris'); };
+  // Yeni maç: puanlar sıfırlanır, ilk tur başlar
   $('#baslatBtn').onclick = () => {
     if (!evMi()) return;
     Ses.ac();
-    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk, oyuncular: tumOyuncular().map(({ id, ad, bot, ikon }) => ({ id, ad, bot: !!bot, ikon })) });
+    D.mac = { hedef: D.lobi.macPuan ?? 5, puan: {}, tur: 0, bitti: false };
+    turBaslat();
   };
+  function turBaslat() {
+    if (!evMi() || !D.mac) return;
+    clearTimeout(D.sonrakiZam);
+    D.mac.tur++;
+    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk,
+      mac: { hedef: D.mac.hedef, puan: D.mac.puan, tur: D.mac.tur },
+      oyuncular: tumOyuncular().map(({ id, ad, bot, ikon }) => ({ id, ad, bot: !!bot, ikon })) });
+  }
 
   // Mikrofon
   async function sesTikla() {
@@ -191,7 +204,7 @@
     oyunKapat();
     const ben = benimId();
     const O = D.oyun = {
-      mod: m.mod, uzunluk: m.uzunluk, tohum: m.tohum, oyuncular: m.oyuncular,
+      mod: m.mod, uzunluk: m.uzunluk, tohum: m.tohum, oyuncular: m.oyuncular, mac: m.mac || { puan: {} },
       hedef: Fizik.MOD[m.mod].hedef[m.uzunluk],
       benIdx: m.oyuncular.findIndex(o => o.id === ben),
       kuleler: new Map(), botlar: new Map(), uzak: new Map(),
@@ -231,6 +244,7 @@
     else if (t === 'dustu') { Ses.dustu(); duyuru(D.oyun?.mod === 'yaris' ? '💥 Parça düştü!' : '💥 Parça düştü! −1 ❤️'); }
     else if (t === 'aletGeldi') { Ses.aletGeldi(); const a = Fizik.ALETLER[v]; duyuru(`${a.ikon} Yeni alet: <b>${a.ad}</b> — ${a.iyi ? 'kendine' : 'rakibe'}`); }
     else if (t === 'elendi') { Ses.kaybet(); duyuru(`❌ ${v}!`); }
+    else if (t === 'sarildi') { Ses.sarmasik(); duyuru(`🌿 Sarmaşık ${v} parçaya sarıldı!`); }
     else if (t === 'zafer') { /* ev karar verir */ }
   }
 
@@ -262,7 +276,8 @@
     const k = O.kuleler.get(m.hedef);
     if (k) k.aletUygula(m.ad);
     if (m.hedef === benimId() || m.kimden === benimId()) {
-      ({ zimba: Ses.zimba, kalas: Ses.aletKullan, kucuk: Ses.aletKullan, buz: Ses.buz, ruzgar: () => Ses.ruzgar(4), dev: Ses.dev, hiz: Ses.hiz })[m.ad]?.();
+      ({ zimba: Ses.zimba, kalas: Ses.aletKullan, kucuk: Ses.aletKullan, buz: Ses.buz, ruzgar: () => Ses.ruzgar(4), dev: Ses.dev, hiz: Ses.hiz,
+        sarmasik: Ses.aletKullan, ucgen: Ses.dev, varil: Ses.dev })[m.ad]?.();
     }
     if (a.iyi) duyuru(`${a.ikon} ${ad(m.kimden)}: <b>${a.ad}</b>`);
     else duyuru(`${a.ikon} ${ad(m.kimden)} → ${m.hedef === benimId() ? '<b>SANA</b>' : ad(m.hedef)}: <b>${a.ad}</b>!`, m.hedef === benimId());
@@ -297,7 +312,13 @@
     if (!bitti) return;
     const sira = durumlar.slice().sort((a, b) => (b.o.id === kazanan) - (a.o.id === kazanan) || (a.d.el - b.d.el) || puan(b.d, O.mod) - puan(a.d, O.mod))
       .map(x => ({ id: x.o.id, ad: x.o.ad, bot: x.o.bot, ikon: x.o.ikon, ust: x.d.ust, yer: x.d.yer, el: x.d.el, ne: x.d.ne }));
-    yay({ tip: 'bitti', kazanan, sira });
+    // Tur puanı: 1. 3, 2. 2, 3. 1, 4. 0 → maç toplamına eklenir
+    const mac = D.mac || (D.mac = { hedef: 5, puan: {}, tur: 1, bitti: false });
+    sira.forEach((s, i) => { s.kazanc = TUR_PUAN[i] || 0; mac.puan[s.id] = (mac.puan[s.id] || 0) + s.kazanc; s.toplam = mac.puan[s.id]; });
+    const enCok = Math.max(...sira.map(s => s.toplam));
+    const onde = sira.filter(s => s.toplam === enCok);
+    mac.bitti = enCok >= mac.hedef && onde.length === 1;   // eşitlikte bir tur daha
+    yay({ tip: 'bitti', kazanan, sira, mac: { hedef: mac.hedef, puan: mac.puan, tur: mac.tur, bitti: mac.bitti, sampiyon: mac.bitti ? onde[0].id : null } });
   }
 
   function oyunBitti(m) {
@@ -305,21 +326,33 @@
     O.bitti = true;
     O.kuleler.forEach(k => { k.durdu = true; });
     const ben = benimId();
-    if (m.kazanan === ben) Ses.zafer(); else Ses.kaybet();
-    const kazAd = m.kazanan ? (m.kazanan === ben ? 'Sen kazandın!' : `${esc(O.oyuncular.find(o => o.id === m.kazanan)?.ad || '?')} kazandı!`) : 'Kimse kazanamadı!';
+    const mac = m.mac || {};
+    O.mac = { ...(O.mac || {}), puan: mac.puan || {} };
+    const adBul = id => (id === ben ? 'Sen' : esc(O.oyuncular.find(o => o.id === id)?.ad || '?'));
+    if ((mac.bitti ? mac.sampiyon : m.kazanan) === ben) Ses.zafer(); else Ses.kaybet();
+    const kazAd = m.kazanan ? (m.kazanan === ben ? 'Bu turu sen kazandın!' : `Bu turu ${adBul(m.kazanan)} kazandı!`) : 'Bu turu kimse kazanamadı!';
     duyuru(`🏆 ${kazAd}`);
     setTimeout(() => {
       if (D.oyun !== O) return;
-      $('#sonucBaslik').innerHTML = m.kazanan === ben ? '🏆 Kazandın!' : m.kazanan ? '🏗️ Oyun bitti' : '💥 Oyun bitti';
-      $('#sonucYazi').innerHTML = kazAd;
+      $('#sonucBaslik').innerHTML = mac.bitti ? (mac.sampiyon === ben ? '🏆 Maçı kazandın!' : `🏆 ${adBul(mac.sampiyon)} maçı kazandı!`) : `🏗️ ${mac.tur || 1}. tur bitti`;
+      $('#sonucYazi').innerHTML = `${kazAd}<br><small>Maç: <b>${mac.hedef || '?'} puana</b> ilk ulaşan kazanır · 1. 3 puan, 2. 2 puan, 3. 1 puan</small>`;
       const madalya = ['🥇', '🥈', '🥉', '4.'];
-      $('#sonucListe').innerHTML = m.sira.map((s, i) => `<div class="satirS ${s.id === ben ? 'ben' : ''}"><span>${madalya[i]}</span><span class="ad">${s.bot ? s.ikon + ' ' : ''}${esc(s.ad)}</span><span>${O.mod === 'yaris' ? `${(s.ust || 0).toFixed(1)} m` : `${s.yer || 0} parça`}${s.el ? ` · ${esc(s.ne || 'elendi')}` : ''}</span></div>`).join('');
+      $('#sonucListe').innerHTML = m.sira.map((s, i) => `<div class="satirS ${s.id === ben ? 'ben' : ''}"><span>${madalya[i]}</span><span class="ad">${s.bot ? s.ikon + ' ' : ''}${esc(s.ad)}<small>${O.mod === 'yaris' ? `${(s.ust || 0).toFixed(1)} m` : `${s.yer || 0} parça`}${s.el ? ` · ${esc(s.ne || 'elendi')}` : ''}</small></span><span class="kazanc">+${s.kazanc ?? 0}</span><span class="toplam">⭐ ${s.toplam ?? 0}</span></div>`).join('');
       $('#tekrarBtn').hidden = !evMi(); $('#lobiyeBtn').hidden = !evMi();
-      $('#sonucBekle').hidden = evMi();
+      $('#tekrarBtn').textContent = mac.bitti ? '🔁 Yeni maç' : '▶ Sonraki tur';
+      // maç sürüyorsa sonraki tur kendiliğinden başlar
+      clearTimeout(D.sonrakiZam);
+      if (!mac.bitti) {
+        let kalan = 10;
+        const yaz = () => { $('#sonucBekle').hidden = false; $('#sonucBekle').textContent = `Sonraki tur ${kalan} saniye içinde başlıyor…`; };
+        yaz();
+        const say = () => { if (D.oyun !== O) return; kalan--; if (kalan <= 0) { if (evMi()) turBaslat(); return; } yaz(); D.sonrakiZam = setTimeout(say, 1000); };
+        D.sonrakiZam = setTimeout(say, 1000);
+      } else { $('#sonucBekle').hidden = evMi(); $('#sonucBekle').textContent = 'Oda sahibi yeni maçı başlatacak…'; }
       $('#sonuc').hidden = false;
     }, 2200);
   }
-  $('#tekrarBtn').onclick = () => $('#baslatBtn').onclick();
+  $('#tekrarBtn').onclick = () => { if (D.mac && !D.mac.bitti) turBaslat(); else $('#baslatBtn').onclick(); };
   $('#lobiyeBtn').onclick = () => yay({ tip: 'lobiyeDon' });
   $('#oyunCikBtn').onclick = () => {
     if (!confirm(D.yerel ? 'Oyundan çıkılsın mı?' : 'Odadan çıkılsın mı?')) return;
@@ -389,7 +422,8 @@
     const kap = $('#etiketler'); kap.innerHTML = '';
     D.oyun.oyuncular.forEach((o, i) => {
       const d = document.createElement('div'); d.className = 'etiketKutu'; d.dataset.i = i;
-      d.innerHTML = `<div class="ust"><span class="ad">${o.bot ? o.ikon : '👷'} ${esc(o.ad)}${o.id === benimId() ? ' (sen)' : ''}</span><span class="deger"></span></div><div class="durumYazi"></div>`;
+      const p = D.oyun.mac?.puan?.[o.id] || 0;
+      d.innerHTML = `<div class="ust"><span class="ad">${o.bot ? o.ikon : '👷'} ${esc(o.ad)}${o.id === benimId() ? ' (sen)' : ''} <span class="yildiz">⭐${p}</span></span><span class="deger"></span></div><div class="durumYazi"></div>`;
       kap.appendChild(d);
     });
   }
@@ -416,7 +450,7 @@
         const al = d.al ? Fizik.ALETLER[d.al] : null;
         const btn = $('#aletBtn');
         btn.hidden = !al || !!d.el || !O.basladi || O.bitti;
-        btn.style.left = (a.x + a.w / 2) + 'px';   // benim kulvarımın ortasında
+        btn.style.left = (a.x + 8) + 'px';   // benim kulvarımın sol alt köşesinde
         // içeriği SADECE alet değişince yaz (her karede yazınca dokunuşlar kayboluyordu)
         if (al && btn.dataset.alet !== d.al) { btn.dataset.alet = d.al; btn.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="h">${al.iyi ? 'kendine' : 'rakibe'}</span>`; btn.classList.toggle('kotu', !al.iyi); }
         if (!al) btn.dataset.alet = '';

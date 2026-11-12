@@ -112,7 +112,7 @@ label { font-size: 13px; color: var(--soluk); }
 .kontrol { width: 66px; height: 66px; border-radius: 50%; font-size: 28px; padding: 0; background: rgba(20, 30, 52, 0.72); border: 2px solid rgba(255, 210, 90, 0.45);
   touch-action: none; -webkit-user-select: none; user-select: none; }
 .kontrol.basili { background: rgba(255, 194, 26, 0.55); transform: scale(0.94); }
-.alet { position: fixed; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5; pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 14px; border-radius: 16px; margin-bottom: 4px;
+.alet { position: fixed; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 5; pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 14px; border-radius: 16px; margin-bottom: 4px;
   background: linear-gradient(180deg, #3ddc6a, #1f9c45); border: 2px solid #9dffb8; color: #062a12; animation: nabiz 1s infinite; }
 .alet.kotu { background: linear-gradient(180deg, #b45cff, #7a22d4); border-color: #dcb0ff; color: #fff; }
 .alet .i { font-size: 30px; line-height: 1.1; }
@@ -120,7 +120,7 @@ label { font-size: 13px; color: var(--soluk); }
 .alet { touch-action: none; }
 .alet .y { font-size: 13px; font-weight: 900; }
 .alet .h { font-size: 11px; opacity: 0.85; }
-@keyframes nabiz { 50% { transform: translateX(-50%) scale(1.06); } }
+@keyframes nabiz { 50% { transform: scale(1.06); } }
 .ipucu { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 3; font-size: 13px; color: rgba(255, 255, 255, 0.7); background: rgba(10, 18, 34, 0.5);
   padding: 4px 10px; border-radius: 8px; pointer-events: none; white-space: nowrap; }
 @media (pointer: fine) { #kontroller .grup { display: none; } #kontroller { justify-content: center; } .alet { bottom: 44px; } }
@@ -128,6 +128,10 @@ label { font-size: 13px; color: var(--soluk); }
 /* Sonuç */
 .sonucListe { display: flex; flex-direction: column; gap: 6px; }
 .satirS { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 8px 12px; font-weight: 800; }
-.satirS .ad { flex: 1; }
+.satirS .ad { flex: 1; display: flex; flex-direction: column; }
+.satirS .ad small { color: var(--soluk); font-weight: 700; font-size: 12px; }
+.satirS .kazanc { color: var(--yesil); font-weight: 900; }
+.satirS .toplam { color: var(--sari); font-weight: 900; min-width: 52px; text-align: right; }
+.etiketKutu .yildiz { color: var(--sari); }
 .satirS.ben { border: 1px solid var(--sari); }
 .satirS span:first-child { font-size: 22px; width: 30px; text-align: center; }

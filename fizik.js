@@ -35,7 +35,13 @@ const Fizik = (() => {
     SEKIL[ad] = h.map(([x, y]) => ({ x: x - mx, y: y - my, w: 1, h: 1 }));
   });
   SEKIL.KALAS = [{ x: 0, y: 0, w: 5, h: 0.5 }];
-  const TIP_KOD = ['I', 'O', 'T', 'L', 'J', 'S', 'Z', 'K1', 'K2', 'KALAS'];
+  // Tuzak parçaları: sivri üçgen taş ve yuvarlak varil (w/h = kapladığı kutu)
+  SEKIL.UCGEN = [{ x: 0, y: 0, w: 2.2, h: 1.6, ucgen: true }];
+  SEKIL.VARIL = [{ x: 0, y: 0, w: 1.5, h: 1.5, daire: true }];
+  // Üçgenin köşeleri (ağırlık merkezi 0,0): taban 2.2, yükseklik 1.6
+  const UCGEN_KOSE = [[-1.1, -1.6 / 3], [1.1, -1.6 / 3], [0, 3.2 / 3]];
+  const TIP_KOD = ['I', 'O', 'T', 'L', 'J', 'S', 'Z', 'K1', 'K2', 'KALAS', 'UCGEN', 'VARIL'];
+  const SARMASIK_N = 2, SARMASIK_BEKLE = 0.35;   // kendisi + en yakın 2 parça = 3 parça
 
   // Aletler: iyiler kendine, kötüler rakibe
   const ALETLER = {
@@ -46,6 +52,9 @@ const Fizik = (() => {
     ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 4 saniye sert rüzgâr eser.' },
     dev: { ad: 'Dev Kasa', ikon: '📦', iyi: false, acik: 'Rakibin sıradaki parçası kocaman.' },
     hiz: { ad: 'Hızlı Vinç', ikon: '⚡', iyi: false, acik: 'Rakibin sıradaki 3 parçası çok hızlı iner.' },
+    sarmasik: { ad: 'Sarmaşık', ikon: '🌿', iyi: true, acik: 'Sıradaki parçan sarmaşıklı: değdiği en yakın 2 parçaya sarılır, 3ü tek parça gibi birbirini tutar.' },
+    ucgen: { ad: 'Sivri Taş', ikon: '🔺', iyi: false, acik: 'Rakibin sıradaki parçası sivri bir üçgen taş: üstü düz değil, koyması zor.' },
+    varil: { ad: 'Varil', ikon: '🛢️', iyi: false, acik: 'Rakibin sıradaki parçası yuvarlak bir varil: yuvarlanıp kaçar.' },
   };
   const ALET_LISTE = Object.keys(ALETLER);
   const ALET_HER = 4;           // her 4 parçada bir alet
@@ -80,7 +89,7 @@ const Fizik = (() => {
       this.bekle = 0.8;
       this.yer = 0; this.can = 3; this.elendi = false; this.neden = ''; this.zafer = false; this.durdu = false;
       this.ust = 0; this.sayac = 0;  // yarış: çizgide bekleme / bulmaca: lazerde bekleme
-      this.etki = { buz: 0, hiz: 0, kucuk: 0, dev: 0, kalas: 0, ruzgar: 0, ruzYon: 1 };
+      this.etki = { buz: 0, hiz: 0, kucuk: 0, dev: 0, kalas: 0, ruzgar: 0, ruzYon: 1, ucgen: 0, varil: 0, sarmasik: 0 };
       this.alet = null; this.aletSay = 0;
       this.birikim = 0;
       this.olay = () => {};
@@ -99,18 +108,27 @@ const Fizik = (() => {
 
     _parcaYap() {
       const e = this.etki;
-      let tip, olcek = 1, buz = false, hiz = false;
-      if (e.kalas > 0) { e.kalas--; tip = 'KALAS'; }
+      let tip, olcek = 1, buz = false, hiz = false, sarmasik = false;
+      if (e.ucgen > 0) { e.ucgen--; tip = 'UCGEN'; }
+      else if (e.varil > 0) { e.varil--; tip = 'VARIL'; }
+      else if (e.kalas > 0) { e.kalas--; tip = 'KALAS'; }
       else if (e.kucuk > 0) { e.kucuk--; tip = Math.random() < 0.5 ? 'K1' : 'K2'; }
       else tip = this._sonraki();
       if (e.dev > 0 && tip !== 'KALAS') { e.dev--; olcek = 1.7; }
       if (e.buz > 0) { e.buz--; buz = true; }
       if (e.hiz > 0) { e.hiz--; hiz = true; }
+      if (e.sarmasik > 0) { e.sarmasik--; sarmasik = true; }
       const y = Math.max(this.ust, 0) + 9 + (olcek > 1 ? 1.5 : 0);
       const b = this.dunya.createBody({ type: 'dynamic', position: V(0, y), fixedRotation: true, gravityScale: 0, angularDamping: DONME_SONUM, linearDamping: 0.05 });
-      SEKIL[tip].forEach(r => b.createFixture(pl.Box(r.w * olcek / 2 * 0.97, r.h * olcek / 2 * 0.97, V(r.x * olcek, r.y * olcek), 0),
-        { density: 1, friction: buz ? 0.02 : SURTUNME, restitution: 0 }));
-      const parca = { id: ++this.sonId, tip, olcek, buz, hiz, b, durum: 'aktif', sayildi: false };
+      const ozellik = { density: 1, friction: buz ? 0.02 : SURTUNME, restitution: 0 };
+      SEKIL[tip].forEach(r => {
+        let sekil;
+        if (r.ucgen) sekil = pl.Polygon(UCGEN_KOSE.map(([x, y]) => V(x * olcek * 0.97, y * olcek * 0.97)));
+        else if (r.daire) sekil = pl.Circle(V(0, 0), (r.w / 2) * olcek * 0.97);
+        else sekil = pl.Box(r.w * olcek / 2 * 0.97, r.h * olcek / 2 * 0.97, V(r.x * olcek, r.y * olcek), 0);
+        b.createFixture(sekil, { ...ozellik, friction: r.daire && !buz ? 0.6 : ozellik.friction });
+      });
+      const parca = { id: ++this.sonId, tip, olcek, buz, hiz, sarmasik, b, durum: 'aktif', sayildi: false };
       b.setUserData(parca);
       this.parcalar.push(parca);
       this.aktif = parca;
@@ -143,6 +161,7 @@ const Fizik = (() => {
       this.aktif = null;
       this.yer++;
       this.bekle = 0.45;
+      if (p.sarmasik) { p.sarT = SARMASIK_BEKLE; p.sarDene = 1.5; }   // biraz otursun, sonra sarılsın
       this.olay('koy', p);
       if (++this.aletSay % ALET_HER === 0 && !this.alet) {
         this.alet = ALET_LISTE[Math.floor(Math.random() * ALET_LISTE.length)];
@@ -182,6 +201,14 @@ const Fizik = (() => {
           if (noktalar.some(n => fx.testPoint(n))) { var_ = true; return false; }
           // öbür parçanın köşeleri bu hücrenin içinde mi?
           const sh = fx.getShape(), ob = fx.getBody();
+          if (!sh.m_vertices) {
+            // daire (varil): merkezin hücreye en yakın noktasına uzaklığı yarıçaptan küçük mü?
+            const m = ob.getWorldPoint(sh.m_p), dx = m.x - x, dy = m.y - y;
+            const lx = dx * cos + dy * sin - cx, ly = -dx * sin + dy * cos - cy;
+            const ex = Math.max(Math.abs(lx) - hw, 0), ey = Math.max(Math.abs(ly) - hh, 0);
+            if (ex * ex + ey * ey < (sh.m_radius - 0.03) ** 2) { var_ = true; return false; }
+            return true;
+          }
           for (const vv of sh.m_vertices) {
             const w = ob.getWorldPoint(vv);
             const dx = w.x - x, dy = w.y - y;
@@ -232,6 +259,9 @@ const Fizik = (() => {
       else if (ad === 'dev') e.dev = 1;
       else if (ad === 'hiz') e.hiz = 3;
       else if (ad === 'ruzgar') { e.ruzgar = 4; e.ruzYon = Math.random() < 0.5 ? -1 : 1; }
+      else if (ad === 'sarmasik') e.sarmasik = 1;
+      else if (ad === 'ucgen') e.ucgen = 1;
+      else if (ad === 'varil') e.varil = 1;
       this.olay('etki', ad);
     }
 
@@ -268,6 +298,29 @@ const Fizik = (() => {
           if (this.hizli || this.kilitT >= KILIT || this.kilitTop >= KILIT_EN_FAZLA) { this.degiyor = false; this._birakUygula(this.aktif); }
         } else this.kilitT = 0;
       }
+
+      // Sarmaşık: yerleşen sarmaşıklı parça, değdiği en yakın 2 parçaya kaynak gibi bağlanır (3ü tek parça olur)
+      this.parcalar.forEach(q => {
+        if (q.sarT === undefined || q.sarT === null) return;
+        q.sarT -= dt; q.sarDene -= dt;
+        if (q.sarT > 0) return;
+        const komsu = [];
+        for (let ce = q.b.getContactList(); ce; ce = ce.next) {
+          if (!ce.contact.isTouching()) continue;
+          const o = ce.other.getUserData();
+          if (o && o !== q && o.durum !== 'aktif' && !komsu.includes(o)) komsu.push(o);
+        }
+        if (!komsu.length && q.sarDene > 0) return;   // henüz bir şeye oturmadı, biraz daha bekle
+        const qp = q.b.getPosition(), uzak = o => { const p = o.b.getPosition(); return Math.hypot(p.x - qp.x, p.y - qp.y); };
+        komsu.sort((a, b) => uzak(a) - uzak(b));
+        komsu.slice(0, SARMASIK_N).forEach(o => {
+          const a = q.b.getPosition(), b = o.b.getPosition();
+          this.dunya.createJoint(pl.WeldJoint({}, q.b, o.b, V((a.x + b.x) / 2, (a.y + b.y) / 2)));
+          o.sarili = true;
+        });
+        q.sarili = true; q.sarT = null;
+        this.olay('sarildi', Math.min(komsu.length, SARMASIK_N));
+      });
 
       // Düşenler
       for (const q of this.parcalar.slice()) {
@@ -332,7 +385,7 @@ const Fizik = (() => {
         p: this.parcalar.map(q => {
           const pos = q.b.getPosition();
           return [q.id, TIP_KOD.indexOf(q.tip), Math.round(pos.x * 100), Math.round(pos.y * 100), Math.round(q.b.getAngle() * 1000), Math.round(q.olcek * 10),
-            (q.buz ? 1 : 0) | (q.durum === 'sabit' ? 2 : 0) | (q.durum === 'aktif' ? 4 : 0)];
+            (q.buz ? 1 : 0) | (q.durum === 'sabit' ? 2 : 0) | (q.durum === 'aktif' ? 4 : 0) | (q.sarmasik || q.sarili ? 8 : 0)];
         }),
         ust: Math.round(this.ust * 100) / 100, yer: this.yer, can: this.can, el: this.elendi ? 1 : 0, ne: this.neden, z: this.zafer ? 1 : 0,
         s: Math.round(this.sayac * 10) / 10, al: this.alet, rz: this.etki.ruzgar > 0 ? this.etki.ruzYon : 0,
@@ -342,15 +395,15 @@ const Fizik = (() => {
     parcaListesi() {
       return this.parcalar.map(q => {
         const pos = q.b.getPosition();
-        return { id: q.id, tip: q.tip, x: pos.x, y: pos.y, a: q.b.getAngle(), olcek: q.olcek, buz: q.buz, sabit: q.durum === 'sabit', aktif: q.durum === 'aktif' };
+        return { id: q.id, tip: q.tip, x: pos.x, y: pos.y, a: q.b.getAngle(), olcek: q.olcek, buz: q.buz, sabit: q.durum === 'sabit', aktif: q.durum === 'aktif', sarmasik: !!(q.sarmasik || q.sarili) };
       });
     }
   }
 
   // Ağdan gelen özeti çizilecek listeye çevir
   function ozetCoz(o) {
-    return (o?.p || []).map(([id, t, x, y, a, s, f]) => ({ id, tip: TIP_KOD[t], x: x / 100, y: y / 100, a: a / 1000, olcek: s / 10, buz: !!(f & 1), sabit: !!(f & 2), aktif: !!(f & 4) }));
+    return (o?.p || []).map(([id, t, x, y, a, s, f]) => ({ id, tip: TIP_KOD[t], x: x / 100, y: y / 100, a: a / 1000, olcek: s / 10, buz: !!(f & 1), sabit: !!(f & 2), aktif: !!(f & 4), sarmasik: !!(f & 8) }));
   }
 
-  return { Kule, SEKIL, ALETLER, ALET_LISTE, MOD, PLATFORM, ozetCoz, tohumlu };
+  return { Kule, SEKIL, ALETLER, ALET_LISTE, MOD, PLATFORM, UCGEN_KOSE, ozetCoz, tohumlu };
 })();

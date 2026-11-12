@@ -61,5 +61,6 @@ const Ses = (() => {
     zafer: () => [523, 659, 784, 1047, 1319].forEach((f, i) => ton(f, 0.28, 'triangle', 0.15, i * 0.11)),
     kaybet: () => [392, 330, 262, 196].forEach((f, i) => ton(f, 0.3, 'triangle', 0.13, i * 0.16)),
     bildirim: () => ton(880, 0.12, 'sine', 0.1),
+    sarmasik: () => { gurultu(0.35, 0.3, 2500, 'bandpass'); [520, 660, 780].forEach((f, i) => ton(f, 0.12, 'triangle', 0.07, 0.1 + i * 0.06)); },
   };
 })();

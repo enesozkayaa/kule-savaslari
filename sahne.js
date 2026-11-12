@@ -87,6 +87,37 @@ const Sahne = (() => {
   const damali = () => doku(256, 32, (g, w, h) => {
     for (let x = 0; x < w / 16; x++) for (let y = 0; y < 2; y++) { g.fillStyle = (x + y) % 2 ? '#111' : '#fff'; g.fillRect(x * 16, y * 16, 16, 16); }
   });
+  const tas = () => doku(128, 128, (g, w, h) => {
+    g.fillStyle = '#7d7f86'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,255,255'},${Math.random() * 0.18})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 0, 7); g.fill(); }
+    g.strokeStyle = 'rgba(30,30,35,0.6)'; g.lineWidth = 2;
+    for (let i = 0; i < 4; i++) { g.beginPath(); let x = Math.random() * w, y = Math.random() * h; g.moveTo(x, y); for (let k = 0; k < 4; k++) { x += 20 - Math.random() * 40; y += 20 - Math.random() * 40; g.lineTo(x, y); } g.stroke(); }
+  });
+  const varilDoku = () => doku(256, 128, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#c42a1e'); gr.addColorStop(0.5, '#e8452f'); gr.addColorStop(1, '#a0201a');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#3a3a40'; [0.18, 0.5, 0.82].forEach(f => g.fillRect(0, h * f - 6, w, 12));
+    g.fillStyle = '#ffd23a'; g.font = '900 34px Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☢', w * 0.25, h * 0.34); g.fillText('☢', w * 0.75, h * 0.66);
+  });
+  const varilKapak = () => doku(128, 128, (g, w, h) => {
+    g.fillStyle = '#9a1e16'; g.beginPath(); g.arc(64, 64, 64, 0, 7); g.fill();
+    g.strokeStyle = '#3a3a40'; g.lineWidth = 8; g.beginPath(); g.arc(64, 64, 56, 0, 7); g.stroke();
+    g.fillStyle = '#3a3a40'; g.beginPath(); g.arc(88, 50, 9, 0, 7); g.fill();
+  });
+  const sarmasikDoku = () => doku(128, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = '#2f7a2a'; g.lineWidth = 5; g.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      g.beginPath(); let x = Math.random() * w, y = 0; g.moveTo(x, y);
+      while (y < h) { const nx = x + 30 - Math.random() * 60, ny = y + 25; g.quadraticCurveTo(x + 25 - Math.random() * 50, y + 12, nx, ny); x = nx; y = ny; }
+      g.stroke();
+    }
+    for (let i = 0; i < 22; i++) {
+      const x = Math.random() * w, y = Math.random() * h, a = Math.random() * 6.3;
+      g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = Math.random() < 0.5 ? '#3fae3a' : '#5cc94f';
+      g.beginPath(); g.ellipse(0, 0, 10, 5.5, 0, 0, 7); g.fill(); g.restore();
+    }
+  });
   const gokyuzu = () => doku(4, 256, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
     gr.addColorStop(0, '#2a6fd6'); gr.addColorStop(0.55, '#7fc0f0'); gr.addColorStop(0.85, '#ffd9a8'); gr.addColorStop(1, '#ffb27a');
@@ -139,6 +170,9 @@ const Sahne = (() => {
     mat.O = ren(0, kasa()); mat.K1 = ren(0, beton()); mat.K2 = mat.K1; mat.KALAS = ren(0, tahta());
     mat.buz = new THREE.MeshStandardMaterial({ map: buzDoku(), roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85, emissive: 0x2a6a8a, emissiveIntensity: 0.25 });
     mat.sabitRenk = new THREE.Color(0x8fa3c0);
+    mat.UCGEN = new THREE.MeshStandardMaterial({ map: tas(), roughness: 0.95 });
+    mat.VARIL = [new THREE.MeshStandardMaterial({ map: varilDoku(), roughness: 0.5, metalness: 0.3 }), new THREE.MeshStandardMaterial({ map: varilKapak(), roughness: 0.5, metalness: 0.3 })];
+    mat.sarmasik = new THREE.MeshStandardMaterial({ map: sarmasikDoku(), transparent: true, alphaTest: 0.2, roughness: 0.8, side: THREE.DoubleSide });
     mat.uyari = new THREE.MeshStandardMaterial({ map: uyari(), roughness: 0.7 });
     mat.betonP = new THREE.MeshStandardMaterial({ map: beton(), roughness: 0.9 });
     mat.kafes = new THREE.MeshStandardMaterial({ map: kafes(), transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.3 });
@@ -170,17 +204,44 @@ const Sahne = (() => {
     const g = new THREE.Group();
     const m = p.buz ? mat.buz : mat[p.tip];
     Fizik.SEKIL[p.tip].forEach(r => {
-      const mesh = new THREE.Mesh(geo(r.w * p.olcek * 0.975, r.h * p.olcek * 0.975), m);
-      mesh.position.set(r.x * p.olcek, r.y * p.olcek, 0);
+      let mesh;
+      if (r.ucgen) {
+        const sh = new THREE.Shape(Fizik.UCGEN_KOSE.map(([x, y]) => new THREE.Vector2(x * p.olcek * 0.975, y * p.olcek * 0.975)));
+        const gg = new THREE.ExtrudeGeometry(sh, { depth: DERIN, bevelEnabled: false }); gg.translate(0, 0, -DERIN / 2);
+        // dokuyu yüze yay
+        const uv = gg.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 2.2 + 0.5, uv.getY(i) / 1.6 + 0.5);
+        mesh = new THREE.Mesh(gg, p.buz ? mat.buz : mat.UCGEN);
+      } else if (r.daire) {
+        const rr = (r.w / 2) * p.olcek * 0.975;
+        const gg = new THREE.CylinderGeometry(rr, rr, DERIN, 28); gg.rotateX(Math.PI / 2);
+        mesh = new THREE.Mesh(gg, p.buz ? mat.buz : [mat.VARIL[0], mat.VARIL[1], mat.VARIL[1]]);
+      } else {
+        mesh = new THREE.Mesh(geo(r.w * p.olcek * 0.975, r.h * p.olcek * 0.975), m);
+        mesh.position.set(r.x * p.olcek, r.y * p.olcek, 0);
+      }
+      mesh.userData.govde = true;
       g.add(mesh);
     });
-    g.userData = { sabit: false, tip: p.tip, buz: p.buz };
+    g.userData = { sabit: false, tip: p.tip, buz: p.buz, sarmasik: false };
     return g;
+  }
+  // Sarmaşık sarılı parça: önüne ve arkasına yapraklı sarmaşık katmanı
+  function sarmasikYap(g, p) {
+    if (g.userData.sarmasik) return;
+    g.userData.sarmasik = true;
+    Fizik.SEKIL[p.tip].forEach(r => {
+      const w = r.w * p.olcek * (r.ucgen ? 0.6 : 1), h = r.h * p.olcek * (r.ucgen ? 0.6 : 1);
+      [1, -1].forEach(yon => {
+        const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat.sarmasik);
+        pl.position.set(r.ucgen ? 0 : r.x * p.olcek, r.ucgen ? -0.1 : r.y * p.olcek, yon * (DERIN / 2 + 0.03));
+        g.add(pl);
+      });
+    });
   }
   function sabitYap(g) {
     if (g.userData.sabit) return;
     g.userData.sabit = true;
-    g.children.forEach(m => { m.material = m.material.clone(); m.material.color.copy(mat.sabitRenk); m.material.emissive = new THREE.Color(0x203048); m.material.emissiveIntensity = 0.4; });
+    g.children.filter(m => m.userData.govde && !Array.isArray(m.material)).forEach(m => { m.material = m.material.clone(); m.material.color.copy(mat.sabitRenk); m.material.emissive = new THREE.Color(0x203048); m.material.emissiveIntensity = 0.4; });
     // zımba telleri
     const tel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.06), mat.koyu);
     tel.position.z = DERIN / 2 + 0.03; g.children[0].add(tel);
@@ -258,6 +319,7 @@ const Sahne = (() => {
       let g = k.parca.get(p.id);
       if (!g) { g = parcaYap(p); g.position.set(p.x, p.y, 0); g.rotation.z = p.a; k.grup.add(g); k.parca.set(p.id, g); }
       if (p.sabit) sabitYap(g);
+      if (p.sarmasik) sarmasikYap(g, p);
       g.userData.aktif = p.aktif;
       k.hedefler.set(p.id, p);
       if (yerel) { g.position.set(p.x, p.y, 0); g.rotation.z = p.a; }
