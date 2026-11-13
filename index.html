@@ -65,8 +65,13 @@
         <div class="ayar" id="zorlukSatir"><span>🤖 Bot zorluğu</span><div class="secenek" id="zorlukSec"></div></div>
         <div class="ayar"><span>🏆 Maç</span><div class="secenek" id="macSec"></div></div>
         <div class="ayar" id="agSatir"><span>🥅 Güvenlik ağı</span><div class="secenek" id="agSec"></div></div>
-        <p class="modAciklama">Her tur: 1. <b>3 puan</b>, 2. <b>2 puan</b>, 3. <b>1 puan</b>, 4. puan yok. Seçilen puana ilk ulaşan maçı kazanır (3 puan = tek tur).</p>
+        <p id="puanAciklama" class="modAciklama"></p>
       </div>
+      <details class="aletler">
+        <summary>⭐ Kalıcı aletler <b id="kaliciSayi"></b> <button id="kaliciTemizle" class="kucukYazi">Temizle</button></summary>
+        <p class="alt kucukAlt">Seçtiklerin oyunda herkesin <b>sağ tarafında hep durur</b>; basınca kullanılır, sonra 20 sn dolmasını bekler. Botlar da kullanır.</p>
+        <div id="kaliciSec" class="aletSec"></div>
+      </details>
       <details class="aletler" open>
         <summary>🧰 Oyundaki aletler <b id="aletSayi"></b> <button id="aletHepsi" class="kucukYazi">Hepsi</button> <button id="aletHicbiri" class="kucukYazi">Hiçbiri</button></summary>
         <p class="alt kucukAlt">Yeşiller kendine, morlar öndeki rakibe. Kapatmak istediğine dokun.</p>
@@ -93,6 +98,7 @@
     <div id="sis" class="sis" hidden></div>
     <div id="modYazi" class="modYazi"></div>
     <div id="sonrakiKutu" class="sonrakiKutu" hidden><small>Sıradaki</small><canvas id="sonraki" width="120" height="96"></canvas><span id="sonrakiEtki"></span></div>
+    <div id="kaliciKutu" class="kaliciKutu" hidden></div>
     <div id="kontroller">
       <div class="grup">
         <button id="solBtn" class="kontrol">◀</button>

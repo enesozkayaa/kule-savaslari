@@ -7,16 +7,21 @@
 
 (() => {
   const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
   const ekranlar = ['#giris', '#lobi', '#oyun', '#sonuc'];
   const goster = (...idler) => ekranlar.forEach(s => { $(s).hidden = !idler.includes(s); });
   const BOT_AD = [['Kunduz', '🦫'], ['Ayı', '🐻'], ['Tilki', '🦊'], ['Baykuş', '🦉'], ['Rakun', '🦝']];
   const UZUNLUK = ['Kısa', 'Orta', 'Uzun'];
   const ZORLUK = [['kolay', 'Kolay'], ['orta', 'Orta'], ['zor', 'Zor']];
-  const MAC_PUAN = [3, 5, 10, 15], TUR_PUAN = [3, 2, 1, 0];
+  const MAC_PUAN = [3, 5, 10, 15];
+  // Tur puanı oyuncu sayısına göre: 2 kişi 3-0, 3 kişi 3-1-0, 4 kişi 3-2-1-0
+  const TUR_PUAN = { 1: [3], 2: [3, 0], 3: [3, 1, 0], 4: [3, 2, 1, 0] };
+  const turPuanYazi = n => (TUR_PUAN[n] || TUR_PUAN[4]).map((p, i) => `${i + 1}. ${p}`).join(' · ');
+  const KALICI_BEKLE = 20;   // kalıcı alet: kullandıktan sonra kaç saniye beklenir
 
   const D = {
     ad: '', yerel: false,
-    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, ag: false, aletler: Fizik.ALET_LISTE.slice(), botlar: [] },
+    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, ag: false, aletler: Fizik.ALET_LISTE.slice(), kalici: [], botlar: [] },
     tekli: false,       // Gökdelen (tek kişilik) oyunu mu?
     mac: null,          // ev: { hedef, puan: {id: toplam}, tur, bitti }
     oyun: null,
@@ -172,6 +177,9 @@
     $('#zorlukSatir').hidden = !D.lobi.botlar.length;
     sec($('#macSec'), MAC_PUAN.map(p => [p, `${p} puan`]), D.lobi.macPuan ?? 5, d => { D.lobi.macPuan = d; lobiDegisti(); });
     aletSecCiz(ev);
+    kaliciSecCiz(ev);
+    const n = tumOyuncular().length;
+    $('#puanAciklama').innerHTML = `Her tur (${n} kişi): <b>${turPuanYazi(Math.max(2, Math.min(4, n)))}</b> puan. Seçilen puana ilk ulaşan maçı kazanır.`;
     const m = Fizik.MOD[D.lobi.mod], h = m.hedef[D.lobi.uzunluk];
     $('#modAciklama').textContent = `${m.acik} ${D.lobi.mod === 'yaris' ? `(Bitiş: ${h} m)` : D.lobi.mod === 'hayatta' ? `(Hedef: ${h} parça, 3 can)` : `(Lazer: ${h} m, 3 can)`}`;
     $('#baslatBtn').hidden = !ev;
@@ -195,6 +203,23 @@
     $('#aletSayi').textContent = `${acik.size} / ${Fizik.ALET_LISTE.length}`;
     $('#aletHepsi').hidden = $('#aletHicbiri').hidden = !ev;
   }
+  // Kalıcı aletler: seçilenler oyunda sağda hep durur, basınca kullanılır (sonra KALICI_BEKLE sn bekler)
+  function kaliciSecCiz(ev) {
+    const secili = new Set(D.lobi.kalici || []);
+    const kap = $('#kaliciSec'); kap.innerHTML = '';
+    Fizik.ALET_LISTE.forEach(a => {
+      const al = Fizik.ALETLER[a];
+      const b = document.createElement('button');
+      b.className = 'aletCip ' + (al.iyi ? 'iyi' : 'kotu') + (secili.has(a) ? ' secili' : '');
+      b.innerHTML = `<span>${al.ikon}</span><b>${al.ad}</b><small>${al.iyi ? 'kendine' : 'rakibe'}</small>`;
+      b.disabled = !ev;
+      b.onclick = () => { if (secili.has(a)) secili.delete(a); else secili.add(a); D.lobi.kalici = Fizik.ALET_LISTE.filter(x => secili.has(x)); lobiDegisti(); };
+      kap.appendChild(b);
+    });
+    $('#kaliciSayi').textContent = secili.size ? `${secili.size} seçili` : 'kapalı';
+    $('#kaliciTemizle').hidden = !ev || !secili.size;
+  }
+  $('#kaliciTemizle').onclick = e => { e.preventDefault(); D.lobi.kalici = []; lobiDegisti(); };
   $('#aletHepsi').onclick = () => { D.lobi.aletler = Fizik.ALET_LISTE.slice(); lobiDegisti(); };
   $('#aletHicbiri').onclick = () => { D.lobi.aletler = []; lobiDegisti(); };
   $('#cikBtn').onclick = () => { Ag.kapat(); D.yerel = false; goster('#giris'); };
@@ -209,7 +234,7 @@
     if (!evMi() || !D.mac) return;
     clearTimeout(D.sonrakiZam);
     D.mac.tur++;
-    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk, aletler: D.lobi.aletler, ag: !!D.lobi.ag,
+    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk, aletler: D.lobi.aletler, ag: !!D.lobi.ag, kalici: D.lobi.kalici || [],
       mac: { hedef: D.mac.hedef, puan: D.mac.puan, tur: D.mac.tur },
       oyuncular: tumOyuncular().map(({ id, ad, bot, ikon }) => ({ id, ad, bot: !!bot, ikon })) });
   }
@@ -259,6 +284,7 @@
     $('#modYazi').innerHTML = `${md.ikon} <b>${md.ad}</b> · ${hedefYazi}${m.mac ? ` · ${m.mac.tur}. tur · maç ${m.mac.hedef} puan` : ''}`;
     goster('#oyun');
     $('#aletBtn').hidden = true;
+    kaliciKur(m);
     $('#kontrolIpucu').hidden = matchMedia('(pointer: coarse)').matches;
     sesDugme(); efektDugme();
   }
@@ -271,6 +297,51 @@
     $('#sonuc').hidden = true;
     $('#sis').hidden = true;
     $('#sonrakiKutu').hidden = true; sonrakiAnahtar = '';
+    $('#kaliciKutu').hidden = true; $('#kaliciKutu').innerHTML = '';
+  }
+
+  // ---------- Kalıcı aletler (sağ tarafta hep duran düğmeler) ----------
+  function kaliciKur(m) {
+    const O = D.oyun;
+    O.kalici = (m.kalici || []).filter(a => Fizik.ALETLER[a] && !(a === 'tamir' && m.mod === 'yaris') && !(m.mod === 'tekli' && !Fizik.ALETLER[a].iyi));
+    O.kaliciHazir = {};   // ad → kullanılabileceği an (oyun saniyesi)
+    O.oyunSn = 0;
+    O.botKalici = new Map();   // bot id → { ad: kalan sn }
+    O.botlar.forEach((b, id) => { const t = {}; O.kalici.forEach(a => { t[a] = 6 + Math.random() * 14; }); O.botKalici.set(id, t); });
+    const kap = $('#kaliciKutu'); kap.innerHTML = '';
+    kap.hidden = !O.kalici.length || O.benIdx < 0;
+    O.kalici.forEach((a, i) => {
+      const al = Fizik.ALETLER[a];
+      const b = document.createElement('button');
+      b.className = 'kaliciBtn ' + (al.iyi ? 'iyi' : 'kotu'); b.dataset.ad = a;
+      b.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="sure"></span>${matchMedia('(pointer: fine)').matches ? `<span class="tus">${i + 1}</span>` : ''}`;
+      b.addEventListener('pointerdown', e => { e.preventDefault(); Ses.ac(); kaliciKullan(a); });
+      kap.appendChild(b);
+    });
+  }
+  function kaliciKullan(a) {
+    const O = D.oyun; if (!O || !O.basladi || O.bitti || !O.kalici?.includes(a)) return;
+    const k = O.kuleler.get(benimId()); if (!k || k.elendi) return;
+    if ((O.kaliciHazir[a] || 0) > O.oyunSn) return;   // daha dolmadı
+    O.kaliciHazir[a] = O.oyunSn + KALICI_BEKLE;
+    Ses.aletKullan();
+    eveGonder({ tip: 'alet', ad: a });
+  }
+  // her kare: bekleme sayaçları + botların kalıcı aletleri
+  function kaliciAdim(dt) {
+    const O = D.oyun; if (!O?.kalici?.length) return;
+    O.oyunSn += dt;
+    if (evMi()) O.botKalici.forEach((t, id) => {
+      const k = O.kuleler.get(id); if (!k || k.elendi || k.zafer) return;
+      O.kalici.forEach(a => { t[a] -= dt; if (t[a] <= 0) { t[a] = KALICI_BEKLE + 2 + Math.random() * 10; botAlet(id, a); } });
+    });
+    $$('#kaliciKutu .kaliciBtn').forEach(b => {
+      const kalan = Math.ceil((O.kaliciHazir[b.dataset.ad] || 0) - O.oyunSn);
+      const dolu = kalan <= 0;
+      b.classList.toggle('bekliyor', !dolu);
+      const yazi = dolu ? 'hazır' : `${kalan} sn`;
+      const s = b.querySelector('.sure'); if (s.textContent !== yazi) s.textContent = yazi;
+    });
   }
 
   // Benim kulemden gelen olaylar → ses + yazı
@@ -359,7 +430,8 @@
     if (O.mod === 'tekli') { yay({ tip: 'bitti', kazanan: null, sira, tekli: true }); return; }
     // Tur puanı: 1. 3, 2. 2, 3. 1, 4. 0 → maç toplamına eklenir
     const mac = D.mac || (D.mac = { hedef: 5, puan: {}, tur: 1, bitti: false });
-    sira.forEach((s, i) => { s.kazanc = TUR_PUAN[i] || 0; mac.puan[s.id] = (mac.puan[s.id] || 0) + s.kazanc; s.toplam = mac.puan[s.id]; });
+    const dagilim = TUR_PUAN[sira.length] || TUR_PUAN[4];
+    sira.forEach((s, i) => { s.kazanc = dagilim[i] || 0; mac.puan[s.id] = (mac.puan[s.id] || 0) + s.kazanc; s.toplam = mac.puan[s.id]; });
     const enCok = Math.max(...sira.map(s => s.toplam));
     const onde = sira.filter(s => s.toplam === enCok);
     mac.bitti = enCok >= mac.hedef && onde.length === 1;   // eşitlikte bir tur daha
@@ -381,7 +453,7 @@
     setTimeout(() => {
       if (D.oyun !== O) return;
       $('#sonucBaslik').innerHTML = mac.bitti ? (mac.sampiyon === ben ? '🏆 Maçı kazandın!' : `🏆 ${adBul(mac.sampiyon)} maçı kazandı!`) : `🏗️ ${mac.tur || 1}. tur bitti`;
-      $('#sonucYazi').innerHTML = `${kazAd}<br><small>Maç: <b>${mac.hedef || '?'} puana</b> ilk ulaşan kazanır · 1. 3 puan, 2. 2 puan, 3. 1 puan</small>`;
+      $('#sonucYazi').innerHTML = `${kazAd}<br><small>Maç: <b>${mac.hedef || '?'} puana</b> ilk ulaşan kazanır · ${turPuanYazi(m.sira.length)} puan</small>`;
       const madalya = ['🥇', '🥈', '🥉', '4.'];
       $('#sonucListe').innerHTML = m.sira.map((s, i) => `<div class="satirS ${s.id === ben ? 'ben' : ''}"><span>${madalya[i]}</span><span class="ad">${s.bot ? s.ikon + ' ' : ''}${esc(s.ad)}<small>${O.mod === 'yaris' ? `${(s.ust || 0).toFixed(1)} m` : `${s.yer || 0} parça`}${s.el ? ` · ${esc(s.ne || 'elendi')}` : ''}</small></span><span class="kazanc">+${s.kazanc ?? 0}</span><span class="toplam">⭐ ${s.toplam ?? 0}</span></div>`).join('');
       $('#tekrarBtn').hidden = !evMi(); $('#lobiyeBtn').hidden = !evMi();
@@ -449,6 +521,7 @@
     else if ((t === 'ArrowUp' || t === 'w' || t === 'W' || t === ' ') && !e.repeat) k.dondur();
     else if (t === 'ArrowDown' || t === 's' || t === 'S') k.hizlandir(true);
     else if ((t === 'Shift' || t === 'e' || t === 'E') && !e.repeat) benimAletim();
+    else if (/^[1-9]$/.test(t) && !e.repeat && D.oyun.kalici?.[+t - 1]) kaliciKullan(D.oyun.kalici[+t - 1]);
   });
   // Basılı tutunca: kısa bekleme, sonra hızlı tekrar (duvara/parçaya kadar kayar)
   const BEKLE = 150, TEKRAR = 40, yonZam = {};
@@ -549,6 +622,9 @@
         // içeriği SADECE alet değişince yaz (her karede yazınca dokunuşlar kayboluyordu)
         if (al && btn.dataset.alet !== d.al) { btn.dataset.alet = d.al; btn.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="h">${al.iyi ? 'kendine' : 'rakibe'}</span>`; btn.classList.toggle('kotu', !al.iyi); }
         if (!al) btn.dataset.alet = '';
+        // kalıcı aletler: benim kulvarımın sağ kenarında, dikey ortada
+        const kk = $('#kaliciKutu');
+        if (!kk.hidden) { kk.style.left = ''; kk.style.right = Math.max(4, innerWidth - (a.x + a.w) + 6) + 'px'; kk.classList.toggle('pasif', !!d.el || O.bitti); }
       }
     });
     // ana alan: kontroller ve üst çubuk ana alanın içinde
@@ -578,6 +654,7 @@
     if (O.basladi && !O.bitti) {
       O.kuleler.forEach(k => k.adim(dt));
       O.botlar.forEach(b => b.adim(dt));
+      kaliciAdim(dt);
       O.gondermeT -= dt;
       if (O.gondermeT <= 0 && !D.yerel) {
         O.gondermeT = 0.1;
