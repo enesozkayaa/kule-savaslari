@@ -34,7 +34,7 @@ const Fizik = (() => {
     const mx = yarim(h.reduce((s, c) => s + c[0], 0) / h.length), my = yarim(h.reduce((s, c) => s + c[1], 0) / h.length);
     SEKIL[ad] = h.map(([x, y]) => ({ x: x - mx, y: y - my, w: 1, h: 1 }));
   });
-  SEKIL.KALAS = [{ x: 0, y: 0, w: 5, h: 0.5 }];
+  SEKIL.KALAS = [{ x: 0, y: 0, w: 4, h: 1 }];   // diğer taşlarla aynı kalınlıkta, 4 kare uzunluğunda düz kiriş
   // Tuzak parçaları: sivri üçgen taş ve yuvarlak varil (w/h = kapladığı kutu)
   SEKIL.UCGEN = [{ x: 0, y: 0, w: 2.2, h: 1.6, ucgen: true }];
   SEKIL.VARIL = [{ x: 0, y: 0, w: 1.5, h: 1.5, daire: true }];
@@ -51,7 +51,7 @@ const Fizik = (() => {
   // Aletler: iyiler kendine, kötüler rakibe
   const ALETLER = {
     zimba: { ad: 'Zımba', ikon: '🔩', iyi: true, acik: 'Kulendeki parçalar yerine çakılır, artık devrilmez.' },
-    kalas: { ad: 'Kalas', ikon: '🪵', iyi: true, acik: 'Sıradaki parça uzun, düz bir kalas.' },
+    kalas: { ad: 'Kalas', ikon: '🪵', iyi: true, acik: 'Sıradaki parça 4 kare uzunluğunda, taşlarla aynı kalınlıkta düz bir kalas. Kuleyi düzler.' },
     kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki parça küçük bir tuğla.' },
     buz: { ad: 'Buz', ikon: '🧊', iyi: false, acik: 'Rakibin sıradaki parçası buz gibi kaygan.' },
     ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 3 saniye sert rüzgâr eser.' },

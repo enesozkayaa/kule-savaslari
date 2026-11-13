@@ -178,3 +178,8 @@ button.kucukYazi { padding: 4px 9px; font-size: 12px; border-radius: 8px; }
 .kaliciBtn .tus { position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: 900; opacity: 0.8; }
 .kaliciBtn.bekliyor { filter: grayscale(0.85) brightness(0.7); }
 .kaliciKutu.pasif { opacity: 0.35; pointer-events: none; }
+
+/* Oyun durdu perdesi */
+.durduPerde { position: fixed; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(8, 14, 28, 0.55); pointer-events: none; }
+.durduPerde b { font-size: 40px; color: #fff; text-shadow: 0 3px 10px #000; }
+.durduPerde small { font-size: 16px; color: var(--sari); font-weight: 800; }

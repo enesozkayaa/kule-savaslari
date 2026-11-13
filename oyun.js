@@ -57,6 +57,7 @@
     else if (m.tip === 'durum') { if (D.oyun && m.id !== benimId()) D.oyun.uzak.set(m.id, m.d); }
     else if (m.tip === 'alet') aletGeldi(m);
     else if (m.tip === 'bitti') oyunBitti(m);
+    else if (m.tip === 'duraklat') duraklatUygula(!!m.acik);
     else if (m.tip === 'lobiyeDon') { D.mac = null; clearTimeout(D.sonrakiZam); oyunKapat(); goster('#lobi'); lobiCiz(); }
     else if (m.tip === 'ayrildi') { if (D.oyun) duyuru(`🚪 ${m.ad} oyundan ayrıldı`); }
   }
@@ -284,6 +285,7 @@
     goster('#oyun');
     $('#aletBtn').hidden = true;
     kaliciKur(m);
+    $('#durdurBtn').hidden = !evMi(); $('#durdurBtn').textContent = '⏸'; $('#durduPerde').hidden = true;
     $('#kontrolIpucu').hidden = matchMedia('(pointer: coarse)').matches;
     sesDugme(); efektDugme();
   }
@@ -297,6 +299,7 @@
     $('#sis').hidden = true;
     $('#sonrakiKutu').hidden = true; sonrakiAnahtar = '';
     $('#kaliciKutu').hidden = true; $('#kaliciKutu').innerHTML = '';
+    $('#durduPerde').hidden = true;
   }
 
   // ---------- Kalıcı aletler (sağ tarafta hep duran düğmeler) ----------
@@ -319,7 +322,7 @@
     });
   }
   function kaliciKullan(a) {
-    const O = D.oyun; if (!O || !O.basladi || O.bitti || !O.kalici?.includes(a)) return;
+    const O = D.oyun; if (!O || !O.basladi || O.bitti || O.duraklat || !O.kalici?.includes(a)) return;
     const k = O.kuleler.get(benimId()); if (!k || k.elendi) return;
     if (O.kaliciHazir[a]) return;   // her turda 1 kez: kullanıldıysa bitti
     O.kaliciHazir[a] = true;
@@ -394,6 +397,7 @@
   // Benim aletim
   function benimAletim() {
     const O = D.oyun; if (!O || !O.basladi || O.bitti) return;
+    if (O.duraklat) return;
     const k = O.kuleler.get(benimId()); if (!k || !k.alet || k.elendi) return;
     const ad = k.alet; k.alet = null;
     Ses.aletKullan();
@@ -494,6 +498,21 @@
   }
   $('#tekrarBtn').onclick = () => { if (D.tekli) return tekliBaslat(); if (D.mac && !D.mac.bitti) turBaslat(); else $('#baslatBtn').onclick(); };
   $('#lobiyeBtn').onclick = () => { if (D.tekli) { D.tekli = false; D.yerel = false; oyunKapat(); goster('#giris'); return; } yay({ tip: 'lobiyeDon' }); };
+  // Oda sahibi oyunu durdurur / devam ettirir (herkeste durur)
+  $('#durdurBtn').onclick = () => {
+    const O = D.oyun; if (!O || O.bitti || !evMi()) return;
+    yay({ tip: 'duraklat', acik: !O.duraklat });
+  };
+  function duraklatUygula(acik) {
+    const O = D.oyun; if (!O || O.bitti) return;
+    O.duraklat = acik;
+    yonBirak(-1); yonBirak(1);
+    O.kuleler.forEach(k => k.hizlandir?.(false));
+    $('#durduPerde').hidden = !acik;
+    $('#durduAlt').textContent = evMi() ? 'Devam etmek için ▶ tuşuna bas' : 'Oda sahibi devam ettirecek…';
+    $('#durdurBtn').textContent = acik ? '▶' : '⏸';
+    Ses.bildirim?.();
+  }
   $('#oyunCikBtn').onclick = () => {
     if (!confirm(D.yerel ? 'Oyundan çıkılsın mı?' : 'Odadan çıkılsın mı?')) return;
     oyunKapat();
@@ -503,7 +522,7 @@
   };
 
   // ---------- Kontroller ----------
-  const kule = () => { const O = D.oyun; return O && O.basladi && !O.bitti ? O.kuleler.get(benimId()) : null; };
+  const kule = () => { const O = D.oyun; return O && O.basladi && !O.bitti && !O.duraklat ? O.kuleler.get(benimId()) : null; };
   window.addEventListener('keydown', e => {
     if (!D.oyun || e.target.tagName === 'INPUT') return;
     const k = kule();
@@ -645,7 +664,9 @@
       if (kalan < O.sonSayac && kalan >= 0) { O.sonSayac = kalan; if (kalan > 0) { Ses.sayac(false); buyukYazi(String(kalan)); } }
       if (simdi >= O.basT) { O.basladi = true; Ses.sayac(true); buyukYazi('BAŞLA!'); }
     }
-    if (O.basladi && !O.bitti) {
+    if (O.duraklat && !O.bitti) {   // oda sahibi durdurdu: fizik, botlar ve sayaç bekler
+      if (!O.basladi) O.basT += dt * 1000;
+    } else if (O.basladi && !O.bitti) {
       O.kuleler.forEach(k => k.adim(dt));
       O.botlar.forEach(b => b.adim(dt));
       kaliciAdim(dt);
