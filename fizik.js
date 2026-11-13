@@ -38,9 +38,14 @@ const Fizik = (() => {
   // Tuzak parçaları: sivri üçgen taş ve yuvarlak varil (w/h = kapladığı kutu)
   SEKIL.UCGEN = [{ x: 0, y: 0, w: 2.2, h: 1.6, ucgen: true }];
   SEKIL.VARIL = [{ x: 0, y: 0, w: 1.5, h: 1.5, daire: true }];
+  // Gökdelen modunda havada beliren sabit çıkıntılar (tutunup yükselmek için)
+  SEKIL.CIKINTI = [{ x: 0, y: 0, w: 1, h: 1 }];
+  SEKIL.CIKINTI2 = [{ x: 0, y: 0, w: 2, h: 0.5 }];
   // Üçgenin köşeleri (ağırlık merkezi 0,0): taban 2.2, yükseklik 1.6
   const UCGEN_KOSE = [[-1.1, -1.6 / 3], [1.1, -1.6 / 3], [0, 3.2 / 3]];
-  const TIP_KOD = ['I', 'O', 'T', 'L', 'J', 'S', 'Z', 'K1', 'K2', 'KALAS', 'UCGEN', 'VARIL'];
+  const TIP_KOD = ['I', 'O', 'T', 'L', 'J', 'S', 'Z', 'K1', 'K2', 'KALAS', 'UCGEN', 'VARIL', 'CIKINTI', 'CIKINTI2'];
+  const AG_HER = 5, AG_EN_FAZLA = 3, CIKINTI_HER = 6;   // güvenlik ağı: her parçada 1/5 şans (en fazla 3 hak); çıkıntı her 6 parçada
+  const platformGen = mod => (mod === 'tekli' ? 4 : PLATFORM);
   const SARMASIK_N = 2, SARMASIK_BEKLE = 0.35;   // kendisi + en yakın 2 parça = 3 parça
 
   // Aletler: iyiler kendine, kötüler rakibe
@@ -70,6 +75,7 @@ const Fizik = (() => {
     yaris: { ad: 'Yarış', ikon: '🏁', hedef: [10, 15, 22], acik: 'Kuleyi bitiş çizgisine ilk ulaştıran kazanır.' },
     hayatta: { ad: 'Hayatta Kalma', ikon: '❤️', hedef: [15, 25, 40], acik: 'Hedef sayıda parçayı yerleştiren kazanır. Düşen her parça 1 can götürür.' },
     bulmaca: { ad: 'Lazer Bulmaca', ikon: '🔴', hedef: [5, 7, 9], acik: 'Lazerin altında kalarak en çok parçayı yerleştiren kazanır. Lazere değen ya da canı biten oyundan çıkar.' },
+    tekli: { ad: 'Gökdelen', ikon: '🏙️', hedef: [0, 0, 0], tekli: true, acik: 'Tek başına: dar platformda olabildiğince yüksel. Her 6 parçada havada tutunacak sabit çıkıntılar belirir. 3 can.' },
   };
 
   function tohumlu(t) {
@@ -87,7 +93,8 @@ const Fizik = (() => {
       this.torba = [];
       this.dunya = pl.World({ gravity: V(0, -10) });
       const p = this.dunya.createBody({ type: 'static', position: V(0, -0.5) });
-      p.createFixture(pl.Box(PLATFORM / 2, 0.5), { friction: 0.9 });
+      this.P = platformGen(this.mod);
+      p.createFixture(pl.Box(this.P / 2, 0.5), { friction: 0.9 });
       this.platform = p;
       this.parcalar = [];
       this.sonId = 0;
@@ -97,7 +104,10 @@ const Fizik = (() => {
       this.yer = 0; this.can = 3; this.elendi = false; this.neden = ''; this.zafer = false; this.durdu = false;
       this.ust = 0; this.sayac = 0;  // yarış: çizgide bekleme / bulmaca: lazerde bekleme
       this.etki = { buz: 0, hiz: 0, kucuk: 0, dev: 0, kalas: 0, ruzgar: 0, ruzYon: 1, ucgen: 0, varil: 0, sarmasik: 0, ters: 0, balon: 0, miknatis: 0, yavas: 0 };
-      this.aletListe = (Array.isArray(ayar.aletler) ? ayar.aletler : ALET_LISTE).filter(a => ALETLER[a] && !(a === 'tamir' && this.mod === 'yaris'));
+      this.aletListe = (Array.isArray(ayar.aletler) ? ayar.aletler : ALET_LISTE).filter(a => ALETLER[a] && !(a === 'tamir' && this.mod === 'yaris') && !(this.mod === 'tekli' && !ALETLER[a].iyi));
+      // Güvenlik ağı: her parçada şansa 1 hak gelebilir; parça düşerse hak harcanır, can gitmez
+      this.agAcik = !!ayar.ag && this.mod !== 'yaris'; this.ag = 0;
+      this.koyulan = 0; this.enYuksek = 0;
       this.alet = null; this.aletSay = 0;
       this.birikim = 0;
       this.olay = () => {};
@@ -189,6 +199,9 @@ const Fizik = (() => {
       if (p.sarmasik) { p.sarT = SARMASIK_BEKLE; p.sarDene = 1.5; }   // biraz otursun, sonra sarılsın
       if (p.miknatis) { p.mikT = 0.15; }                               // mıknatıs: değdiği yere hemen yapışır
       this.olay('koy', p);
+      this.koyulan++;
+      if (this.agAcik && this.ag < AG_EN_FAZLA && Math.random() < 1 / AG_HER) { this.ag++; this.olay('agGeldi', this.ag); }   // şansa: ortalama 5 parçada 1
+      if (this.mod === 'tekli' && this.koyulan % CIKINTI_HER === 0) this._cikintiEkle();
       if (++this.aletSay % ALET_HER === 0 && !this.alet) {
         if (!this.aletListe.length) return;
         this.alet = this.aletListe[Math.floor(Math.random() * this.aletListe.length)];
@@ -376,10 +389,12 @@ const Fizik = (() => {
       for (const q of this.parcalar.slice()) {
         const y = q.b.getPosition().y;
         if (q === this.aktif && y < -1.5) { this._birakUygula(q); }
-        if (y < DUSME_Y) {
+        // ağ varsa düşen parça platformun hemen altında yakalanıp yok olur
+        if (y < (this.ag > 0 ? -2.5 : DUSME_Y) && q.durum !== 'cikinti') {
           this.dunya.destroyBody(q.b);
           this.parcalar = this.parcalar.filter(z => z !== q);
           if (q.sayildi) this.yer--;
+          if (this.ag > 0) { this.ag--; this.olay('agKurtardi', q); continue; }
           if (this.mod !== 'yaris') this.can = Math.max(0, this.can - 1);
           this.olay('dustu', q);
           if (this.can <= 0 && !this.elendi) this._ele('Canın bitti');
@@ -389,11 +404,12 @@ const Fizik = (() => {
       // Kulenin tepesi (durgun parçalara göre)
       let ust = 0;
       this.parcalar.forEach(q => {
-        if (q.durum === 'aktif') return;
+        if (q.durum === 'aktif' || q.durum === 'cikinti') return;
         if (q.durum === 'serbest' && q.b.getLinearVelocity().length() > 0.8) return;
         for (let f = q.b.getFixtureList(); f; f = f.getNext()) { const u = f.getAABB(0).upperBound.y; if (u > ust) ust = u; }
       });
       this.ust = ust;
+      if (ust > this.enYuksek) this.enYuksek = ust;
 
       // Mod kuralları
       if (this.mod === 'yaris') {
@@ -417,6 +433,43 @@ const Fizik = (() => {
         if (this.bekle <= 0) this._parcaYap();
       }
     }
+    // Gökdelen: kulenin yanında (ona değmeden) ya da üstünde havada sabit bir çıkıntı
+    _cikintiEkle() {
+      const tip = Math.random() < 0.5 ? 'CIKINTI' : 'CIKINTI2';
+      const r = SEKIL[tip][0];
+      // kulenin şu anki genişliği
+      let mn = -this.P / 2, mx = this.P / 2;
+      this.parcalar.forEach(q => {
+        if (q.durum === 'aktif' || q.durum === 'cikinti') return;
+        for (let f = q.b.getFixtureList(); f; f = f.getNext()) { const a = f.getAABB(0); if (a.upperBound.y > this.ust - 4) { mn = Math.min(mn, a.lowerBound.x); mx = Math.max(mx, a.upperBound.x); } }
+      });
+      const yar = v => Math.round(v * 2) / 2;
+      const adaylar = [];
+      const y = Math.max(this.ust, 0) + 1 + Math.random() * 2;
+      [-1, 1].forEach(yon => {
+        const kenar = yon < 0 ? mn : mx;
+        const x = yar(kenar + yon * (1 + r.w / 2 + Math.random() * 1.2));
+        if (Math.abs(x) + r.w / 2 <= 4.8) adaylar.push({ x, y });
+      });
+      if (Math.random() < 0.3) adaylar.push({ x: yar((Math.random() - 0.5) * 2), y: Math.max(this.ust, 0) + 3.5 });   // bazen tam ortada, kulenin üstünde
+      // bir parçaya değiyorsa olmaz
+      const bos = a => {
+        let dolu = false;
+        const kutu = pl.AABB(V(a.x - r.w / 2 - 0.4, a.y - r.h / 2 - 0.4), V(a.x + r.w / 2 + 0.4, a.y + r.h / 2 + 0.4));
+        this.dunya.queryAABB(kutu, () => { dolu = true; return false; });
+        return !dolu;
+      };
+      const uygun = adaylar.filter(bos);
+      if (!uygun.length) return;
+      const a = uygun[Math.floor(Math.random() * uygun.length)];
+      const b = this.dunya.createBody({ type: 'static', position: V(a.x, yar(a.y)) });
+      b.createFixture(pl.Box(r.w / 2 * 0.97, r.h / 2 * 0.97), { friction: SURTUNME });
+      const parca = { id: ++this.sonId, tip, olcek: 1, b, durum: 'cikinti', sayildi: false };
+      b.setUserData(parca);
+      this.parcalar.push(parca);
+      this.olay('cikinti', parca);
+    }
+
     _ele(neden) {
       this.elendi = true; this.neden = neden;
       if (this.aktif) { this.aktif.b.setGravityScale(1); this.aktif.b.setFixedRotation(false); this.aktif.durum = 'serbest'; this.aktif = null; }
@@ -438,7 +491,7 @@ const Fizik = (() => {
             (q.buz ? 1 : 0) | (q.durum === 'sabit' ? 2 : 0) | (q.durum === 'aktif' ? 4 : 0) | (q.sarmasik || q.sarili ? 8 : 0) | (q.miknatis ? 16 : 0) | (q.balon ? 32 : 0)];
         }),
         ust: Math.round(this.ust * 100) / 100, yer: this.yer, can: this.can, el: this.elendi ? 1 : 0, ne: this.neden, z: this.zafer ? 1 : 0,
-        s: Math.round(this.sayac * 10) / 10, al: this.alet, rz: this.etki.ruzgar > 0 ? this.etki.ruzYon : 0,
+        s: Math.round(this.sayac * 10) / 10, al: this.alet, rz: this.etki.ruzgar > 0 ? this.etki.ruzYon : 0, ag: this.ag, ey: Math.round(this.enYuksek * 100) / 100,
       };
     }
     // Yerel çizim için aynı biçimde
@@ -455,5 +508,5 @@ const Fizik = (() => {
     return (o?.p || []).map(([id, t, x, y, a, s, f]) => ({ id, tip: TIP_KOD[t], x: x / 100, y: y / 100, a: a / 1000, olcek: s / 10, buz: !!(f & 1), sabit: !!(f & 2), aktif: !!(f & 4), sarmasik: !!(f & 8), miknatis: !!(f & 16), balon: !!(f & 32) }));
   }
 
-  return { Kule, SEKIL, ALETLER, ALET_LISTE, MOD, PLATFORM, UCGEN_KOSE, ozetCoz, tohumlu };
+  return { Kule, SEKIL, ALETLER, ALET_LISTE, MOD, PLATFORM, platformGen, UCGEN_KOSE, ozetCoz, tohumlu };
 })();

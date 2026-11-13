@@ -29,6 +29,7 @@
         <button id="katilBtn">Katıl</button>
       </div>
       <button id="botlaBtn">🤖 Botlarla oyna (internetsiz)</button>
+      <button id="tekliBtn">🏙️ Tek başına oyna (Gökdelen)</button>
       <p id="girisDurum" class="durum"></p>
       <details class="nasil">
         <summary>❓ Nasıl oynanır?</summary>
@@ -38,6 +39,8 @@
           <li>❤️ <b>Hayatta Kalma:</b> hedef sayıda parçayı yerleştir. Düşen her parça 1 can götürür, 3 canın var.</li>
           <li>🔴 <b>Lazer Bulmaca:</b> lazerin altında kalarak en çok parçayı yerleştir. Lazere değen ya da canı biten çıkar.</li>
           <li>Her 4 parçada bir <b>alet</b> kazanırsın: 🔩 Zımba, 🪵 Kalas, 🧱 Küçük tuğla, 🌿 Sarmaşık, 🧲 Mıknatıs, 🐢 Yavaş vinç, 🛠️ Tamir kendine; 🧊 Buz, 🌬️ Rüzgâr, 📦 Dev kasa, ⚡ Hızlı vinç, 🔺 Sivri taş, 🛢️ Varil, 🌫️ Sis, 🔄 Ters kumanda, 🎈 Balon öndeki rakibe! Hangilerinin oyunda olacağını bekleme odasında seçebilirsin.</li>
+          <li>🏙️ <b>Gökdelen (tek başına):</b> dar platformda olabildiğince yüksel. Her 6 parçada havada sabit çıkıntılar belirir, onlara tutunarak genişleyebilirsin. 3 can, rekorun kaydedilir.</li>
+          <li>🥅 <b>Güvenlik ağı:</b> parça koydukça şansa ağ hakkı gelir (ortalama 5 parçada 1, en fazla 3). Parçan düşerse ağ yakalar, can gitmez. Gökdelen'de hep açık, diğer modlarda bekleme odasından açılır.</li>
           <li>🏆 <b>Maç:</b> her turda 1. 3 puan, 2. 2 puan, 3. 1 puan alır. Seçilen puana (3/5/10/15) ilk ulaşan kazanır.</li>
           <li>Bilgisayarda: ← → kaydır, ↑ ya da boşluk döndür, ↓ hızlı indir, Shift alet.</li>
         </ul>
@@ -61,6 +64,7 @@
         <div class="ayar"><span>📏 Uzunluk</span><div class="secenek" id="uzunlukSec"></div></div>
         <div class="ayar" id="zorlukSatir"><span>🤖 Bot zorluğu</span><div class="secenek" id="zorlukSec"></div></div>
         <div class="ayar"><span>🏆 Maç</span><div class="secenek" id="macSec"></div></div>
+        <div class="ayar" id="agSatir"><span>🥅 Güvenlik ağı</span><div class="secenek" id="agSec"></div></div>
         <p class="modAciklama">Her tur: 1. <b>3 puan</b>, 2. <b>2 puan</b>, 3. <b>1 puan</b>, 4. puan yok. Seçilen puana ilk ulaşan maçı kazanır (3 puan = tek tur).</p>
       </div>
       <details class="aletler" open>

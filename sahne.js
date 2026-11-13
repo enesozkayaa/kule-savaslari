@@ -168,6 +168,9 @@ const Sahne = (() => {
     mat.S = ren(0, tugla('#4a9e48')); mat.Z = ren(0, tugla('#a8489c'));
     mat.I = new THREE.MeshStandardMaterial({ map: celik(), roughness: 0.45, metalness: 0.35 });
     mat.O = ren(0, kasa()); mat.K1 = ren(0, beton()); mat.K2 = mat.K1; mat.KALAS = ren(0, tahta());
+    mat.CIKINTI = new THREE.MeshStandardMaterial({ map: celik(), color: 0x8a96a8, roughness: 0.5, metalness: 0.5, emissive: 0x1a2a3a, emissiveIntensity: 0.5 });
+    mat.CIKINTI2 = mat.CIKINTI;
+    mat.ag = new THREE.MeshBasicMaterial({ map: (() => { const t = doku(64, 64, (g, w, h) => { g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 0); g.lineTo(w, h); g.moveTo(w, 0); g.lineTo(0, h); g.stroke(); g.strokeStyle = 'rgba(255,200,40,0.9)'; g.strokeRect(1, 1, w - 2, h - 2); }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 2); return t; })(), transparent: true, side: THREE.DoubleSide, depthWrite: false });
     mat.buz = new THREE.MeshStandardMaterial({ map: buzDoku(), roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85, emissive: 0x2a6a8a, emissiveIntensity: 0.25 });
     mat.sabitRenk = new THREE.Color(0x8fa3c0);
     mat.UCGEN = new THREE.MeshStandardMaterial({ map: tas(), roughness: 0.95 });
@@ -267,7 +270,7 @@ const Sahne = (() => {
   function kulvarYap(i, mod, hedef) {
     const x0 = i * ARA;
     const grup = new THREE.Group(); grup.position.x = x0; scene.add(grup);
-    const P = Fizik.PLATFORM;
+    const P = Fizik.platformGen(mod);
     // platform + ayak
     const plat = new THREE.Mesh(new THREE.BoxGeometry(P, 1, 2.4), mat.betonP); plat.position.y = -0.5; grup.add(plat);
     const serit = new THREE.Mesh(new THREE.BoxGeometry(P + 0.02, 0.22, 0.05), mat.uyari); serit.position.set(0, -0.14, 1.22); grup.add(serit);
@@ -306,6 +309,8 @@ const Sahne = (() => {
     const araba = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.8), mat.koyu); araba.position.y = -0.4; vinc.add(araba);
     const halat = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 6), mat.koyu); vinc.add(halat);
     const kanca = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.05, 6, 12, Math.PI * 1.4), mat.koyu); vinc.add(kanca);
+    // güvenlik ağı (hak varken platformun altında gerili)
+    const ag = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.4), mat.ag); ag.rotation.x = -Math.PI / 2.4; ag.position.set(0, -2.6, 0.3); ag.visible = false; grup.add(ag);
     // düşme rehberi (ışık sütunu)
     const isik = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat.isik); isik.visible = false; grup.add(isik);
     // rüzgâr çizgileri
@@ -313,7 +318,7 @@ const Sahne = (() => {
     for (let k = 0; k < 14; k++) { const r = new THREE.Mesh(new THREE.PlaneGeometry(1.6 + Math.random() * 1.6, 0.05), mat.ruzgar); r.visible = false; r.userData = { hiz: 14 + Math.random() * 10, y: Math.random() }; grup.add(r); ruz.push(r); }
 
     const kamera = new THREE.PerspectiveCamera(40, 1, 0.5, 200);
-    return { i, x0, grup, kamera, parca: new Map(), hedefler: new Map(), kamY: 5, vincY: 11, vinc, araba, halat, kanca, isik, ruz, ust: 0, rz: 0, yerel: false };
+    return { i, x0, grup, kamera, parca: new Map(), hedefler: new Map(), kamY: 5, vincY: 11, vinc, araba, halat, kanca, isik, ruz, ag, ust: 0, rz: 0, yerel: false };
   }
 
   function oyunKur(sayi, mod, hedef) {
@@ -328,7 +333,7 @@ const Sahne = (() => {
   // Kulvarın parçalarını güncelle. liste: [{id,tip,x,y,a,olcek,buz,sabit,aktif}], yerel: doğrudan (yumuşatmasız)
   function guncelle(i, liste, durum, yerel) {
     const k = kulvarlar[i]; if (!k) return;
-    k.yerel = yerel; k.ust = durum.ust || 0; k.rz = durum.rz || 0;
+    k.yerel = yerel; k.ust = durum.ust || 0; k.rz = durum.rz || 0; k.ag.visible = (durum.ag || 0) > 0;
     const gorulen = new Set();
     liste.forEach(p => {
       gorulen.add(p.id);

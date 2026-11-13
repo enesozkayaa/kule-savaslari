@@ -16,7 +16,8 @@
 
   const D = {
     ad: '', yerel: false,
-    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, aletler: Fizik.ALET_LISTE.slice(), botlar: [] },
+    lobi: { mod: 'yaris', uzunluk: 1, zorluk: 'orta', macPuan: 5, ag: false, aletler: Fizik.ALET_LISTE.slice(), botlar: [] },
+    tekli: false,       // Gökdelen (tek kişilik) oyunu mu?
     mac: null,          // ev: { hedef, puan: {id: toplam}, tur, bitti }
     oyun: null,
   };
@@ -67,12 +68,14 @@
   };
   $('#odaKurBtn').onclick = () => {
     const ad = adAl(); if (!ad) return;
+    D.tekli = false;
     D.yerel = false; D.lobi.botlar = [];
     $('#girisDurum').textContent = 'Oda açılıyor…';
     Ag.odaAc(ad);
   };
   $('#katilBtn').onclick = () => {
     const ad = adAl(); if (!ad) return;
+    D.tekli = false;
     const kod = $('#odaKoduGir').value.trim();
     if (kod.length < 5) { $('#girisDurum').textContent = '5 harfli oda kodunu yaz.'; return; }
     D.yerel = false;
@@ -80,7 +83,16 @@
     Ag.katil(kod, ad);
   };
   $('#odaKoduGir').addEventListener('keydown', e => { if (e.key === 'Enter') $('#katilBtn').click(); });
+  // Tek başına: Gökdelen modu, botsuz, internetsiz
+  function tekliBaslat() {
+    Ag.kapat();
+    D.yerel = true; D.tekli = true; D.mac = null;
+    clearTimeout(D.sonrakiZam);
+    mesajIsle({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: 'tekli', uzunluk: 1, zorluk: 'orta', aletler: Fizik.ALET_LISTE, ag: true, oyuncular: [{ id: 'ben', ad: D.ad, bot: false }] });
+  }
+  $('#tekliBtn').onclick = () => { const ad = adAl(); if (!ad) return; $('#girisDurum').textContent = ''; tekliBaslat(); };
   $('#botlaBtn').onclick = () => {
+    D.tekli = false;
     const ad = adAl(); if (!ad) return;
     Ag.kapat();
     D.yerel = true;
@@ -152,7 +164,9 @@
         b.disabled = !ev; b.onclick = () => fn(d); kap.appendChild(b);
       });
     };
-    sec($('#modSec'), Object.entries(Fizik.MOD).map(([k, m]) => [k, `${m.ikon} ${m.ad}`]), D.lobi.mod, d => { D.lobi.mod = d; lobiDegisti(); });
+    sec($('#modSec'), Object.entries(Fizik.MOD).filter(([, m]) => !m.tekli).map(([k, m]) => [k, `${m.ikon} ${m.ad}`]), D.lobi.mod, d => { D.lobi.mod = d; lobiDegisti(); });
+    sec($('#agSec'), [[false, 'Kapalı'], [true, 'Açık']], !!D.lobi.ag, d => { D.lobi.ag = d; lobiDegisti(); });
+    $('#agSatir').hidden = D.lobi.mod === 'yaris';
     sec($('#uzunlukSec'), UZUNLUK.map((u, i) => [i, u]), D.lobi.uzunluk, d => { D.lobi.uzunluk = d; lobiDegisti(); });
     sec($('#zorlukSec'), ZORLUK, D.lobi.zorluk, d => { D.lobi.zorluk = d; lobiDegisti(); });
     $('#zorlukSatir').hidden = !D.lobi.botlar.length;
@@ -195,7 +209,7 @@
     if (!evMi() || !D.mac) return;
     clearTimeout(D.sonrakiZam);
     D.mac.tur++;
-    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk, aletler: D.lobi.aletler,
+    yay({ tip: 'basla', tohum: Math.floor(Math.random() * 1e9), mod: D.lobi.mod, uzunluk: D.lobi.uzunluk, zorluk: D.lobi.zorluk, aletler: D.lobi.aletler, ag: !!D.lobi.ag,
       mac: { hedef: D.mac.hedef, puan: D.mac.puan, tur: D.mac.tur },
       oyuncular: tumOyuncular().map(({ id, ad, bot, ikon }) => ({ id, ad, bot: !!bot, ikon })) });
   }
@@ -229,7 +243,7 @@
       kuleler: new Map(), botlar: new Map(), uzak: new Map(),
       basT: performance.now() + 3200, basladi: false, bitti: false, gondermeT: 0, kontrolT: 0, sonSayac: 4,
     };
-    const yeniKule = () => new Fizik.Kule({ tohum: m.tohum, mod: m.mod, uzunluk: m.uzunluk, aletler: m.aletler });
+    const yeniKule = () => new Fizik.Kule({ tohum: m.tohum, mod: m.mod, uzunluk: m.uzunluk, aletler: m.aletler, ag: m.ag });
     if (O.benIdx >= 0) {
       const k = yeniKule(); k.olay = (t, v) => benimOlay(t, v); O.kuleler.set(ben, k);
     }
@@ -240,7 +254,8 @@
     Sahne.oyunKur(m.oyuncular.length, m.mod, O.hedef);
     etiketleriKur();
     // üstte: hangi moddayız
-    const md = Fizik.MOD[m.mod], hedefYazi = m.mod === 'yaris' ? `bitiş ${O.hedef} m` : m.mod === 'hayatta' ? `${O.hedef} parça · 3 can` : `lazer ${O.hedef} m · 3 can`;
+    let rekor = 0; try { rekor = +localStorage.getItem('ks.rekor') || 0; } catch (e) { }
+    const md = Fizik.MOD[m.mod], hedefYazi = m.mod === 'yaris' ? `bitiş ${O.hedef} m` : m.mod === 'hayatta' ? `${O.hedef} parça · 3 can` : m.mod === 'tekli' ? `3 can · rekor ${rekor.toFixed(1)} m` : `lazer ${O.hedef} m · 3 can`;
     $('#modYazi').innerHTML = `${md.ikon} <b>${md.ad}</b> · ${hedefYazi}${m.mac ? ` · ${m.mac.tur}. tur · maç ${m.mac.hedef} puan` : ''}`;
     goster('#oyun');
     $('#aletBtn').hidden = true;
@@ -268,6 +283,9 @@
     else if (t === 'dustu') { Ses.dustu(); duyuru(D.oyun?.mod === 'yaris' ? '💥 Parça düştü!' : '💥 Parça düştü! −1 ❤️'); }
     else if (t === 'aletGeldi') { Ses.aletGeldi(); const a = Fizik.ALETLER[v]; duyuru(`${a.ikon} Yeni alet: <b>${a.ad}</b> — ${a.iyi ? 'kendine' : 'rakibe'}`); }
     else if (t === 'elendi') { Ses.kaybet(); duyuru(`❌ ${v}!`); }
+    else if (t === 'agGeldi') { Ses.aletGeldi(); duyuru(`🥅 Güvenlik ağı hakkı kazandın (${v})`); }
+    else if (t === 'agKurtardi') { Ses.ag(); duyuru('🥅 Ağ yakaladı, can gitmedi!'); }
+    else if (t === 'cikinti') { Ses.bildirim(); }
     else if (t === 'sarildi') { Ses.sarmasik(); duyuru(`🌿 Sarmaşık ${v} parçaya sarıldı!`); }
     else if (t === 'zafer') { /* ev karar verir */ }
   }
@@ -276,7 +294,7 @@
   function durumAl(id) {
     const O = D.oyun; if (!O) return null;
     const k = O.kuleler.get(id);
-    if (k) return { ust: k.ust, yer: k.yer, can: k.can, el: k.elendi ? 1 : 0, ne: k.neden, z: k.zafer ? 1 : 0, s: k.sayac, al: k.alet };
+    if (k) return { ust: k.ust, yer: k.yer, can: k.can, el: k.elendi ? 1 : 0, ne: k.neden, z: k.zafer ? 1 : 0, s: k.sayac, al: k.alet, ag: k.ag, ey: k.enYuksek };
     return O.uzak.get(id) || null;
   }
   const puan = (d, mod) => (!d ? 0 : mod === 'yaris' ? d.ust : d.yer);
@@ -338,6 +356,7 @@
     if (!bitti) return;
     const sira = durumlar.slice().sort((a, b) => (b.o.id === kazanan) - (a.o.id === kazanan) || (a.d.el - b.d.el) || puan(b.d, O.mod) - puan(a.d, O.mod))
       .map(x => ({ id: x.o.id, ad: x.o.ad, bot: x.o.bot, ikon: x.o.ikon, ust: x.d.ust, yer: x.d.yer, el: x.d.el, ne: x.d.ne }));
+    if (O.mod === 'tekli') { yay({ tip: 'bitti', kazanan: null, sira, tekli: true }); return; }
     // Tur puanı: 1. 3, 2. 2, 3. 1, 4. 0 → maç toplamına eklenir
     const mac = D.mac || (D.mac = { hedef: 5, puan: {}, tur: 1, bitti: false });
     sira.forEach((s, i) => { s.kazanc = TUR_PUAN[i] || 0; mac.puan[s.id] = (mac.puan[s.id] || 0) + s.kazanc; s.toplam = mac.puan[s.id]; });
@@ -352,6 +371,7 @@
     O.bitti = true;
     O.kuleler.forEach(k => { k.durdu = true; });
     const ben = benimId();
+    if (m.tekli) { tekliSonuc(O); return; }
     const mac = m.mac || {};
     O.mac = { ...(O.mac || {}), puan: mac.puan || {} };
     const adBul = id => (id === ben ? 'Sen' : esc(O.oyuncular.find(o => o.id === id)?.ad || '?'));
@@ -378,12 +398,41 @@
       $('#sonuc').hidden = false;
     }, 2200);
   }
-  $('#tekrarBtn').onclick = () => { if (D.mac && !D.mac.bitti) turBaslat(); else $('#baslatBtn').onclick(); };
-  $('#lobiyeBtn').onclick = () => yay({ tip: 'lobiyeDon' });
+  // Gökdelen rekorları: en çok dizili parça (asıl rekor) ve en yüksek nokta
+  function rekorOku() {
+    let parca = 0, boy = 0;
+    try { parca = +localStorage.getItem('ks.rekorParca') || 0; boy = +localStorage.getItem('ks.rekor') || 0; } catch (e) { }
+    return { parca, boy };
+  }
+  // Gökdelen sonucu: kaç parça dizdin, ne kadar yükseldin, rekor
+  function tekliSonuc(O) {
+    const k = O.kuleler.get('ben'); const ey = k ? k.enYuksek : 0, parca = k ? k.koyulan : 0, dizili = O.enCokYer || 0;
+    const r = rekorOku();
+    const yeniRekor = dizili > r.parca || (dizili === r.parca && ey > r.boy);
+    try { localStorage.setItem('ks.rekorParca', String(Math.max(dizili, r.parca))); localStorage.setItem('ks.rekor', Math.max(ey, r.boy).toFixed(2)); } catch (e) { }
+    if (yeniRekor) Ses.zafer(); else Ses.kaybet();
+    duyuru(yeniRekor ? '🏆 Yeni rekor!' : '🏙️ Gökdelen bitti');
+    setTimeout(() => {
+      if (D.oyun !== O) return;
+      $('#sonucBaslik').innerHTML = yeniRekor ? '🏆 Yeni rekor!' : '🏙️ Gökdelen bitti';
+      $('#sonucYazi').innerHTML = `Canların bitti. Kulende aynı anda en fazla <b>${dizili} parça</b> dizili durdu.`;
+      $('#sonucListe').innerHTML = `<div class="satirS ben"><span>🧱</span><span class="ad">En çok dizili parça</span><span class="toplam">${dizili}</span></div>
+        <div class="satirS"><span>🏙️</span><span class="ad">En yüksek nokta</span><span class="toplam">${ey.toFixed(1)} m</span></div>
+        <div class="satirS"><span>🏗️</span><span class="ad">Toplam koyduğun parça</span><span class="toplam">${parca}</span></div>
+        <div class="satirS"><span>🏆</span><span class="ad">Rekorun</span><span class="toplam">${Math.max(dizili, r.parca)} parça / ${Math.max(ey, r.boy).toFixed(1)} m</span></div>`;
+      $('#tekrarBtn').hidden = false; $('#lobiyeBtn').hidden = false;
+      $('#tekrarBtn').textContent = '🔁 Tekrar dene'; $('#lobiyeBtn').textContent = '↩ Ana menü';
+      $('#sonucBekle').hidden = true;
+      $('#sonuc').hidden = false;
+    }, 2200);
+  }
+  $('#tekrarBtn').onclick = () => { if (D.tekli) return tekliBaslat(); if (D.mac && !D.mac.bitti) turBaslat(); else $('#baslatBtn').onclick(); };
+  $('#lobiyeBtn').onclick = () => { if (D.tekli) { D.tekli = false; D.yerel = false; oyunKapat(); goster('#giris'); return; } yay({ tip: 'lobiyeDon' }); };
   $('#oyunCikBtn').onclick = () => {
     if (!confirm(D.yerel ? 'Oyundan çıkılsın mı?' : 'Odadan çıkılsın mı?')) return;
     oyunKapat();
-    if (D.yerel) { goster('#lobi'); lobiCiz(); }
+    if (D.tekli) { D.tekli = false; D.yerel = false; goster('#giris'); }
+    else if (D.yerel) { goster('#lobi'); lobiCiz(); }
     else { Ag.kapat(); goster('#giris'); }
   };
 
@@ -462,8 +511,10 @@
       el.classList.toggle('dar', a.w < 170);
       const o = O.oyuncular[a.i], d = durumAl(o.id) || {};
       const kalpler = O.mod === 'yaris' ? '' : ' ' + '❤️'.repeat(Math.max(0, d.can ?? 3)) + '🖤'.repeat(Math.max(0, 3 - (d.can ?? 3)));
+      const agYazi = d.ag > 0 ? ` 🥅${d.ag}` : '';
       const deger = O.mod === 'yaris' ? `🏗️ ${(d.ust || 0).toFixed(1)} / ${O.hedef} m`
-        : O.mod === 'hayatta' ? `🧱 ${d.yer || 0} / ${O.hedef}${kalpler}` : `🧱 ${d.yer || 0}${kalpler}`;
+        : O.mod === 'hayatta' ? `🧱 ${d.yer || 0} / ${O.hedef}${kalpler}${agYazi}`
+        : O.mod === 'tekli' ? `🏙️ ${(d.ust || 0).toFixed(1)} m${kalpler}${agYazi}` : `🧱 ${d.yer || 0}${kalpler}${agYazi}`;
       // benim üstümdeki etkiler (kaç parça kaldı)
       let etk = '';
       if (a.ana) {
@@ -477,6 +528,12 @@
       }
       el.querySelector('.deger').innerHTML = deger + (etk ? `<br><span class="etkiler">${etk.trim()}</span>` : '');
       if (a.ana) sonrakiGoster(a, O.kuleler.get(o.id), d);
+      // Gökdelen: üstte canlı rekor denemesi tablosu
+      if (a.ana && O.mod === 'tekli') {
+        O.enCokYer = Math.max(O.enCokYer || 0, d.yer || 0);
+        const r = rekorOku();
+        $('#modYazi').innerHTML = `🏙️ <b>Gökdelen</b> · 🧱 <b>${d.yer || 0}</b> parça dizili · ${(d.ust || 0).toFixed(1)} m · 🏆 Rekor: <b>${r.parca}</b> parça / ${r.boy.toFixed(1)} m`;
+      }
       let durum = '';
       if (d.z) durum = '🏆 BİTİRDİ!';
       else if (d.el) durum = `❌ ${esc(d.ne || 'Elendi')}`;
@@ -534,8 +591,8 @@
     // çizim
     O.oyuncular.forEach((o, i) => {
       const k = O.kuleler.get(o.id);
-      if (k) Sahne.guncelle(i, k.parcaListesi(), { ust: k.ust, rz: k.etki.ruzgar > 0 ? k.etki.ruzYon : 0 }, true);
-      else { const u = O.uzak.get(o.id); if (u) Sahne.guncelle(i, Fizik.ozetCoz(u), { ust: u.ust, rz: u.rz }, false); }
+      if (k) Sahne.guncelle(i, k.parcaListesi(), { ust: k.ust, rz: k.etki.ruzgar > 0 ? k.etki.ruzYon : 0, ag: k.ag }, true);
+      else { const u = O.uzak.get(o.id); if (u) Sahne.guncelle(i, Fizik.ozetCoz(u), { ust: u.ust, rz: u.rz, ag: u.ag }, false); }
     });
     const alan = yerlesim();
     Sahne.ciz(dt, alan);
