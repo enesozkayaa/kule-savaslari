@@ -285,7 +285,7 @@
     goster('#oyun');
     $('#aletBtn').hidden = true;
     kaliciKur(m);
-    $('#durdurBtn').hidden = !evMi(); $('#durdurBtn').textContent = '⏸'; $('#durduPerde').hidden = true;
+    $('#durdurBtn').hidden = !evMi(); $('#lobiOyunBtn').hidden = !evMi() || m.mod === 'tekli'; $('#durdurBtn').textContent = '⏸'; $('#durduPerde').hidden = true;
     $('#kontrolIpucu').hidden = matchMedia('(pointer: coarse)').matches;
     sesDugme(); efektDugme();
   }
@@ -498,6 +498,12 @@
   }
   $('#tekrarBtn').onclick = () => { if (D.tekli) return tekliBaslat(); if (D.mac && !D.mac.bitti) turBaslat(); else $('#baslatBtn').onclick(); };
   $('#lobiyeBtn').onclick = () => { if (D.tekli) { D.tekli = false; D.yerel = false; oyunKapat(); goster('#giris'); return; } yay({ tip: 'lobiyeDon' }); };
+  // Oyun içinden bekleme odasına dön (oda sahibi; herkes onunla lobiye döner)
+  $('#lobiOyunBtn').onclick = () => {
+    if (!D.oyun || !evMi() || D.tekli) return;
+    if (!confirm('Oyun bitirilip herkes bekleme odasına dönsün mü?')) return;
+    yay({ tip: 'lobiyeDon' });
+  };
   // Oda sahibi oyunu durdurur / devam ettirir (herkeste durur)
   $('#durdurBtn').onclick = () => {
     const O = D.oyun; if (!O || O.bitti || !evMi()) return;

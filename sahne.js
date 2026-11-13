@@ -358,6 +358,7 @@ const Sahne = (() => {
       k.parca.forEach((g, id) => {
         const h = k.hedefler.get(id);
         if (!k.yerel && h) {
+          if (Math.abs(h.x - g.position.x) + Math.abs(h.y - g.position.y) > 1.2) { g.position.x = h.x; g.position.y = h.y; g.rotation.z = h.a; }
           g.position.x += (h.x - g.position.x) * f; g.position.y += (h.y - g.position.y) * f;
           let da = h.a - g.rotation.z; da = Math.atan2(Math.sin(da), Math.cos(da)); g.rotation.z += da * f;
         }

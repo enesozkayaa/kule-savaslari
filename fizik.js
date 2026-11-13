@@ -183,6 +183,12 @@ const Fizik = (() => {
       }
     }
 
+    // Bu taş şu an aktif (inen) parçaya değiyor mu?
+    _aktifeDeger(q) {
+      if (!this.aktif) return false;
+      for (let ce = q.b.getContactList(); ce; ce = ce.next) if (ce.other === this.aktif.b && ce.contact.isTouching()) return true;
+      return false;
+    }
     // Aktif parçayı bırak: artık serbest fizik
     _birakUygula(p) {
       if (this.aktif !== p) return;
@@ -323,6 +329,11 @@ const Fizik = (() => {
       if (p) {
         let hiz = (this.hizli ? 13 : p.yavas ? 0.9 : 2.1) * (p.hiz ? 2.6 : 1);
         if (this.degiyor) hiz = 0.3;   // yere değmiş, kaydırılıyor: alttakini ezmesin
+        else {
+          // bir sonraki adımda bir parçanın içine girecekse zorla itme (rüzgârla kayan taşlara gömülmesin)
+          const pos = p.b.getPosition();
+          if (this._cakisir(pos.x, pos.y - Math.max(hiz, 2.1) * dt * 1.5, p.b.getAngle())) hiz = Math.min(hiz, 0.6);
+        }
         // Yumuşak iniş: altında bir şey varsa son anda yavaşla (kuleyi sarsmasın)
         if (hiz > 2.1) {
           const pos = p.b.getPosition(), a = p.b.getAngle();
@@ -333,7 +344,7 @@ const Fizik = (() => {
       }
       if (this.etki.ruzgar > 0) {
         this.etki.ruzgar -= dt;
-        this.parcalar.forEach(q => { if (q.durum === 'serbest') { q.b.applyForceToCenter(V(this.etki.ruzYon * q.b.getMass() * 3.2, 0), true); } });
+        this.parcalar.forEach(q => { if (q.durum === 'serbest' && !this._aktifeDeger(q)) { q.b.applyForceToCenter(V(this.etki.ruzYon * q.b.getMass() * 3.2, 0), true); } });
       }
       this.dunya.step(dt, 10, 8);
       // Yere değen parça hemen bırakılmaz: KILIT süresince sağa-sola kaydırılabilir (altlara sokmak için).
