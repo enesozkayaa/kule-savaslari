@@ -17,7 +17,6 @@
   // Tur puanı oyuncu sayısına göre: 2 kişi 3-0, 3 kişi 3-1-0, 4 kişi 3-2-1-0
   const TUR_PUAN = { 1: [3], 2: [3, 0], 3: [3, 1, 0], 4: [3, 2, 1, 0] };
   const turPuanYazi = n => (TUR_PUAN[n] || TUR_PUAN[4]).map((p, i) => `${i + 1}. ${p}`).join(' · ');
-  const KALICI_BEKLE = 20;   // kalıcı alet: kullandıktan sonra kaç saniye beklenir
 
   const D = {
     ad: '', yerel: false,
@@ -203,7 +202,7 @@
     $('#aletSayi').textContent = `${acik.size} / ${Fizik.ALET_LISTE.length}`;
     $('#aletHepsi').hidden = $('#aletHicbiri').hidden = !ev;
   }
-  // Kalıcı aletler: seçilenler oyunda sağda hep durur, basınca kullanılır (sonra KALICI_BEKLE sn bekler)
+  // Hediye aletler: seçilenler oyunda sağda durur, her turda 1 kez kullanılır
   function kaliciSecCiz(ev) {
     const secili = new Set(D.lobi.kalici || []);
     const kap = $('#kaliciSec'); kap.innerHTML = '';
@@ -307,14 +306,14 @@
     O.kaliciHazir = {};   // ad → kullanılabileceği an (oyun saniyesi)
     O.oyunSn = 0;
     O.botKalici = new Map();   // bot id → { ad: kalan sn }
-    O.botlar.forEach((b, id) => { const t = {}; O.kalici.forEach(a => { t[a] = 6 + Math.random() * 14; }); O.botKalici.set(id, t); });
+    O.botlar.forEach((b, id) => { const t = {}; O.kalici.forEach(a => { t[a] = 8 + Math.random() * 40; }); O.botKalici.set(id, t); });
     const kap = $('#kaliciKutu'); kap.innerHTML = '';
     kap.hidden = !O.kalici.length || O.benIdx < 0;
     O.kalici.forEach((a, i) => {
       const al = Fizik.ALETLER[a];
       const b = document.createElement('button');
       b.className = 'kaliciBtn ' + (al.iyi ? 'iyi' : 'kotu'); b.dataset.ad = a;
-      b.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="sure"></span>${matchMedia('(pointer: fine)').matches ? `<span class="tus">${i + 1}</span>` : ''}`;
+      b.innerHTML = `<span class="i">${al.ikon}</span><span class="y">${al.ad}</span><span class="sure">1 kez</span>${matchMedia('(pointer: fine)').matches ? `<span class="tus">${i + 1}</span>` : ''}`;
       b.addEventListener('pointerdown', e => { e.preventDefault(); Ses.ac(); kaliciKullan(a); });
       kap.appendChild(b);
     });
@@ -322,10 +321,12 @@
   function kaliciKullan(a) {
     const O = D.oyun; if (!O || !O.basladi || O.bitti || !O.kalici?.includes(a)) return;
     const k = O.kuleler.get(benimId()); if (!k || k.elendi) return;
-    if ((O.kaliciHazir[a] || 0) > O.oyunSn) return;   // daha dolmadı
-    O.kaliciHazir[a] = O.oyunSn + KALICI_BEKLE;
+    if (O.kaliciHazir[a]) return;   // her turda 1 kez: kullanıldıysa bitti
+    O.kaliciHazir[a] = true;
     Ses.aletKullan();
     eveGonder({ tip: 'alet', ad: a });
+    const b = $(`#kaliciKutu .kaliciBtn[data-ad="${a}"]`); if (b) b.remove();
+    if (!$('#kaliciKutu .kaliciBtn')) $('#kaliciKutu').hidden = true;
   }
   // her kare: bekleme sayaçları + botların kalıcı aletleri
   function kaliciAdim(dt) {
@@ -333,14 +334,7 @@
     O.oyunSn += dt;
     if (evMi()) O.botKalici.forEach((t, id) => {
       const k = O.kuleler.get(id); if (!k || k.elendi || k.zafer) return;
-      O.kalici.forEach(a => { t[a] -= dt; if (t[a] <= 0) { t[a] = KALICI_BEKLE + 2 + Math.random() * 10; botAlet(id, a); } });
-    });
-    $$('#kaliciKutu .kaliciBtn').forEach(b => {
-      const kalan = Math.ceil((O.kaliciHazir[b.dataset.ad] || 0) - O.oyunSn);
-      const dolu = kalan <= 0;
-      b.classList.toggle('bekliyor', !dolu);
-      const yazi = dolu ? 'hazır' : `${kalan} sn`;
-      const s = b.querySelector('.sure'); if (s.textContent !== yazi) s.textContent = yazi;
+      O.kalici.forEach(a => { if (t[a] == null) return; t[a] -= dt; if (t[a] <= 0) { t[a] = null; botAlet(id, a); } });   // bot da 1 kez
     });
   }
 
