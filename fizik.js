@@ -50,7 +50,7 @@ const Fizik = (() => {
     kucuk: { ad: 'Küçük Tuğla', ikon: '🧱', iyi: true, acik: 'Sıradaki parça küçük bir tuğla.' },
     buz: { ad: 'Buz', ikon: '🧊', iyi: false, acik: 'Rakibin sıradaki parçası buz gibi kaygan.' },
     ruzgar: { ad: 'Rüzgâr', ikon: '🌬️', iyi: false, acik: 'Rakibin kulesine 3 saniye sert rüzgâr eser.' },
-    dev: { ad: 'Dev Kasa', ikon: '📦', iyi: false, acik: 'Rakibin sıradaki parçası kocaman.' },
+    dev: { ad: 'Dev Kasa', ikon: '📦', iyi: false, acik: 'Rakibin sıradaki parçası tam 2 kat büyük.' },
     hiz: { ad: 'Hızlı Vinç', ikon: '⚡', iyi: false, acik: 'Rakibin sıradaki parçası çok hızlı iner.' },
     sarmasik: { ad: 'Sarmaşık', ikon: '🌿', iyi: true, acik: 'Sıradaki parçan sarmaşıklı: değdiği en yakın 2 parçaya sarılır, 3ü tek parça gibi birbirini tutar.' },
     ucgen: { ad: 'Sivri Taş', ikon: '🔺', iyi: false, acik: 'Rakibin sıradaki parçası sivri bir üçgen taş: üstü düz değil, koyması zor.' },
@@ -133,7 +133,7 @@ const Fizik = (() => {
       else if (e.kalas > 0) { e.kalas--; tip = 'KALAS'; }
       else if (e.kucuk > 0) { e.kucuk--; tip = this._kucukTip || (Math.random() < 0.5 ? 'K1' : 'K2'); this._kucukTip = null; }
       else tip = this._sonraki();
-      if (e.dev > 0 && tip !== 'KALAS') { e.dev--; olcek = 1.7; }
+      if (e.dev > 0 && tip !== 'KALAS') { e.dev--; olcek = 2; }   // tam 2 kat: hücreler ızgaraya oturur, yan yana boşluksuz
       if (e.buz > 0) { e.buz--; buz = true; }
       if (e.hiz > 0) { e.hiz--; hiz = true; }
       if (e.sarmasik > 0) { e.sarmasik--; sarmasik = true; }
