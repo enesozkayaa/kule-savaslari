@@ -286,7 +286,7 @@
     else if (t === 'agGeldi') { Ses.aletGeldi(); duyuru(`🥅 Güvenlik ağı hakkı kazandın (${v})`); }
     else if (t === 'agKurtardi') { Ses.ag(); duyuru('🥅 Ağ yakaladı, can gitmedi!'); }
     else if (t === 'cikinti') { Ses.bildirim(); }
-    else if (t === 'sarildi') { Ses.sarmasik(); duyuru(`🌿 Sarmaşık ${v} parçaya sarıldı!`); }
+    else if (t === 'sarildi') { Ses.sarmasik(); duyuru(`🌿 Sarmaşık ${v} yere sarıldı!`); }
     else if (t === 'zafer') { /* ev karar verir */ }
   }
 

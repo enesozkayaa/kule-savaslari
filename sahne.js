@@ -318,7 +318,7 @@ const Sahne = (() => {
     for (let k = 0; k < 14; k++) { const r = new THREE.Mesh(new THREE.PlaneGeometry(1.6 + Math.random() * 1.6, 0.05), mat.ruzgar); r.visible = false; r.userData = { hiz: 14 + Math.random() * 10, y: Math.random() }; grup.add(r); ruz.push(r); }
 
     const kamera = new THREE.PerspectiveCamera(40, 1, 0.5, 200);
-    return { i, x0, grup, kamera, parca: new Map(), hedefler: new Map(), kamY: 5, vincY: 11, vinc, araba, halat, kanca, isik, ruz, ag, ust: 0, rz: 0, yerel: false };
+    return { i, x0, mod, grup, kamera, parca: new Map(), hedefler: new Map(), kamY: 5, vincY: 11, vinc, araba, halat, kanca, isik, ruz, ag, ust: 0, rz: 0, yerel: false };
   }
 
   function oyunKur(sayi, mod, hedef) {
@@ -409,7 +409,7 @@ const Sahne = (() => {
       const cam = k.kamera, asp = a.w / a.h;
       cam.aspect = asp;
       // Görünen alan: en az 9 birim yükseklik, 9.4 birim genişlik (platform 6 + taşma payı)
-      const yariH = 9, yariW = asp < 0.45 ? 3.6 : 4.7;   // çok dar sütunda (telefon, dikey) biraz daha yakın
+      const yariH = 9, yariW = k.mod === 'tekli' ? 6.4 : asp < 0.45 ? 3.6 : 4.7;   // Gökdelen: yandaki çıkıntılar da görünsün   // çok dar sütunda (telefon, dikey) biraz daha yakın
       const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
       const d = Math.max(yariH / t, yariW / (t * asp));
       const vh = d * t;   // görünen yarı yükseklik

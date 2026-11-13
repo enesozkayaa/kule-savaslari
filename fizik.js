@@ -201,7 +201,8 @@ const Fizik = (() => {
       this.olay('koy', p);
       this.koyulan++;
       if (this.agAcik && this.ag < AG_EN_FAZLA && Math.random() < 1 / AG_HER) { this.ag++; this.olay('agGeldi', this.ag); }   // şansa: ortalama 5 parçada 1
-      if (this.mod === 'tekli' && this.koyulan % CIKINTI_HER === 0) this._cikintiEkle();
+      // çıkıntı sırası geldiyse (ya da önceki yer bulamadıysa) ekle; olmazsa bir sonraki parçada tekrar dene
+      if (this.mod === 'tekli' && (this.koyulan % CIKINTI_HER === 0 || this.cikintiBekliyor)) this.cikintiBekliyor = !this._cikintiEkle();
       if (++this.aletSay % ALET_HER === 0 && !this.alet) {
         if (!this.aletListe.length) return;
         this.alet = this.aletListe[Math.floor(Math.random() * this.aletListe.length)];
@@ -350,22 +351,30 @@ const Fizik = (() => {
         if (q.sarT === undefined || q.sarT === null) return;
         q.sarT -= dt; q.sarDene -= dt;
         if (q.sarT > 0) return;
+        // önce DEĞDİĞİ şeyler (parçalar, sabit çıkıntılar, platform), en yakından
+        const qp = q.b.getPosition(), uzak = o => { const p = o.b.getPosition(); return Math.hypot(p.x - qp.x, p.y - qp.y); };
         const komsu = [];
         for (let ce = q.b.getContactList(); ce; ce = ce.next) {
           if (!ce.contact.isTouching()) continue;
-          const o = ce.other.getUserData();
-          if (o && o !== q && o.durum !== 'aktif' && !komsu.includes(o)) komsu.push(o);
+          const o = ce.other.getUserData() || (ce.other === this.platform ? { b: this.platform, platform: true } : null);
+          if (o && o !== q && o.durum !== 'aktif' && !komsu.some(k => k.b === o.b)) komsu.push(o);
         }
         if (!komsu.length && q.sarDene > 0) return;   // henüz bir şeye oturmadı, biraz daha bekle
-        const qp = q.b.getPosition(), uzak = o => { const p = o.b.getPosition(); return Math.hypot(p.x - qp.x, p.y - qp.y); };
-        komsu.sort((a, b) => uzak(a) - uzak(b));
-        komsu.slice(0, SARMASIK_N).forEach(o => {
-          const a = q.b.getPosition(), b = o.b.getPosition();
+        komsu.sort((a, b) => (a.platform ? 1 : 0) - (b.platform ? 1 : 0) || uzak(a) - uzak(b));   // parçalar platformdan önce
+        // değdiği 2'den azsa, eksiği yakındaki (3.5 birim içindeki) parçalardan tamamla
+        if (komsu.length < SARMASIK_N) {
+          this.parcalar.filter(o => o !== q && o.durum !== 'aktif' && !komsu.includes(o))
+            .map(o => ({ o, u: uzak(o) })).filter(x => x.u < 3.5).sort((a, b) => a.u - b.u)
+            .slice(0, SARMASIK_N - komsu.length).forEach(x => komsu.push(x.o));
+        }
+        const secilen = komsu.slice(0, SARMASIK_N);
+        secilen.forEach(o => {
+          const a = q.b.getPosition(), b = o.platform ? V(a.x, -0.5) : o.b.getPosition();
           this.dunya.createJoint(pl.WeldJoint({}, q.b, o.b, V((a.x + b.x) / 2, (a.y + b.y) / 2)));
-          o.sarili = true;
+          if (!o.platform) o.sarili = true;
         });
         q.sarili = true; q.sarT = null;
-        this.olay('sarildi', Math.min(komsu.length, SARMASIK_N));
+        this.olay('sarildi', secilen.length);
       });
 
       // Mıknatıs: oturduğu parçaya / platforma kaynaklanır (en fazla 2 yere)
@@ -449,9 +458,10 @@ const Fizik = (() => {
       [-1, 1].forEach(yon => {
         const kenar = yon < 0 ? mn : mx;
         const x = yar(kenar + yon * (1 + r.w / 2 + Math.random() * 1.2));
-        if (Math.abs(x) + r.w / 2 <= 4.8) adaylar.push({ x, y });
+        if (Math.abs(x) + r.w / 2 <= 6) adaylar.push({ x, y });
       });
-      if (Math.random() < 0.3) adaylar.push({ x: yar((Math.random() - 0.5) * 2), y: Math.max(this.ust, 0) + 3.5 });   // bazen tam ortada, kulenin üstünde
+      const ortada = { x: yar((Math.random() - 0.5) * 2), y: Math.max(this.ust, 0) + 3.5 };   // tam ortada, kulenin üstünde
+      if (Math.random() < 0.3) adaylar.push(ortada);
       // bir parçaya değiyorsa olmaz
       const bos = a => {
         let dolu = false;
@@ -460,7 +470,8 @@ const Fizik = (() => {
         return !dolu;
       };
       const uygun = adaylar.filter(bos);
-      if (!uygun.length) return;
+      if (!uygun.length && bos(ortada)) uygun.push(ortada);   // yanlarda yer yoksa kulenin üstüne
+      if (!uygun.length) return false;
       const a = uygun[Math.floor(Math.random() * uygun.length)];
       const b = this.dunya.createBody({ type: 'static', position: V(a.x, yar(a.y)) });
       b.createFixture(pl.Box(r.w / 2 * 0.97, r.h / 2 * 0.97), { friction: SURTUNME });
@@ -468,6 +479,7 @@ const Fizik = (() => {
       b.setUserData(parca);
       this.parcalar.push(parca);
       this.olay('cikinti', parca);
+      return true;
     }
 
     _ele(neden) {
