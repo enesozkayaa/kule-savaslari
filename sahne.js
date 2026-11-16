@@ -378,12 +378,14 @@ const Sahne = (() => {
         k.kanca.position.set(k.araba.position.x, ust + 0.1, 0); k.kanca.rotation.z = Math.PI * 0.8;
         // düşme rehberi
         const genis = kutu.max.x - kutu.min.x, alty = kutu.min.y;
+        k.aktifAlt = alty;   // kamera aşağı inen parçayı da takip etsin
         k.isik.visible = true; k.isik.scale.set(genis, Math.max(0.1, alty + 0.0), 1);
         k.isik.position.set((kutu.min.x + kutu.max.x) / 2 - k.x0, alty / 2, -0.55);
       } else {
         k.halat.visible = true; k.halat.scale.y = 0.6; k.halat.position.set(k.araba.position.x, -0.95, 0);
         k.kanca.position.set(k.araba.position.x, -1.3, 0);
         k.isik.visible = false;
+        k.aktifAlt = null;
       }
       // rüzgâr
       k.ruz.forEach(r => {
@@ -395,6 +397,10 @@ const Sahne = (() => {
       // kamera yüksekliği
       const kHedef = Math.max(0, k.ust + 2.5);
       k.kamY += (kHedef - k.kamY) * Math.min(1, dt * 1.8);
+      // aşağı inen parçanın altı (yumuşak); parça yoksa yavaşça kuleye geri dön
+      const altHedef = k.aktifAlt == null ? 1e3 : k.aktifAlt;
+      if (k.odakAlt == null) k.odakAlt = 1e3;
+      k.odakAlt += (altHedef - k.odakAlt) * Math.min(1, dt * (altHedef < k.odakAlt ? 6 : 1.5));
     });
   }
 
@@ -410,12 +416,16 @@ const Sahne = (() => {
       const cam = k.kamera, asp = a.w / a.h;
       cam.aspect = asp;
       // Görünen alan: en az 9 birim yükseklik, 9.4 birim genişlik (platform 6 + taşma payı)
-      const yariH = 9, yariW = k.mod === 'tekli' ? 6.4 : asp < 0.45 ? 3.6 : 4.7;   // Gökdelen: yandaki çıkıntılar da görünsün   // çok dar sütunda (telefon, dikey) biraz daha yakın
+      // Kule uzadıkça kamera geri çekilir: platform da kulenin tepesi de (yeni parça dahil) ekranda kalsın.
+      // Çok uzayınca (yariH 15'i aşınca) en tepeyi takip eder; parça aşağı indikçe kamera da aşağı iner.
+      const ustS = Math.max(0, k.kamY - 2.5);
+      const yariH = Math.min(15, Math.max(9, (ustS + 12.7) / 1.76)), yariW = k.mod === 'tekli' ? 6.4 : asp < 0.45 ? 3.6 : 4.7;   // Gökdelen: yandaki çıkıntılar da görünsün   // çok dar sütunda (telefon, dikey) biraz daha yakın
       const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
       const d = Math.max(yariH / t, yariW / (t * asp));
       const vh = d * t;   // görünen yarı yükseklik
       // platform ekranın altına yakın kalsın (alttaki düğmeler için ~%12 pay), kule büyüdükçe kamera yükselir
-      const merkez = Math.max(k.kamY, vh * 0.76 - 1.2);
+      let merkez = Math.max(vh * 0.76 - 1.2, ustS + 11.5 - vh);   // altta platform, üstte kule tepesi + ~11 birim pay
+      if (k.odakAlt < 1e2) merkez = Math.max(vh * 0.76 - 1.2, Math.min(merkez, k.odakAlt - 1.5 + vh * 0.76));
       cam.position.set(k.x0, merkez + 1, d);
       cam.lookAt(k.x0, merkez, 0);
       cam.updateProjectionMatrix();
