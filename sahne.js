@@ -417,9 +417,9 @@ const Sahne = (() => {
       cam.aspect = asp;
       // Görünen alan: en az 9 birim yükseklik, 9.4 birim genişlik (platform 6 + taşma payı)
       // Kule uzadıkça kamera geri çekilir: platform da kulenin tepesi de (yeni parça dahil) ekranda kalsın.
-      // Çok uzayınca (yariH 15'i aşınca) en tepeyi takip eder; parça aşağı indikçe kamera da aşağı iner.
+      // Çok uzayınca (yariH 12.5'i aşınca) en tepeyi takip eder; parça aşağı indikçe kamera da aşağı iner.
       const ustS = Math.max(0, k.kamY - 2.5);
-      const yariH = Math.min(15, Math.max(9, (ustS + 12.7) / 1.76)), yariW = k.mod === 'tekli' ? 6.4 : asp < 0.45 ? 3.6 : 4.7;   // Gökdelen: yandaki çıkıntılar da görünsün   // çok dar sütunda (telefon, dikey) biraz daha yakın
+      const yariH = Math.min(12.5, Math.max(9, (ustS + 12.7) / 1.76)), yariW = k.mod === 'tekli' ? 6.4 : asp < 0.45 ? 3.6 : 4.7;   // Gökdelen: yandaki çıkıntılar da görünsün   // çok dar sütunda (telefon, dikey) biraz daha yakın
       const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
       const d = Math.max(yariH / t, yariW / (t * asp));
       const vh = d * t;   // görünen yarı yükseklik
